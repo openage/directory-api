@@ -1,0 +1,1464 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Directory API",
+        "description": "Move your app forward with the Directory API",
+        "version": "1.0.0"
+    },
+    "host": "localhost:3035",
+    "schemes": ["http", "https"],
+    "basePath": "/api",
+    "produces": ["application/json"],
+    "paths": {
+
+        "/tenants": {
+            "post": {
+                "summary": "Create app",
+                "description": "Create app with owner",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "body",
+                    "in": "body",
+                    "description": "First Time in EMS",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/appReq"
+                    }
+                }],
+                "tags": [
+                    "Tenants"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "post": {
+                "summary": "Create user",
+                "description": "Create user with ED",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "body",
+                    "in": "body",
+                    "description": "user",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/userReq"
+                    }
+                }],
+                "tags": [
+                    "Users"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/confirm": {
+            "post": {
+                "summary": "verify user pin",
+                "description": "verify user with ED",
+                "operationId": "post",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "body",
+                    "in": "body",
+                    "description": "pin verification",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/verifyPin"
+                    }
+                },{
+                    "name": "x-app-code",
+                    "in": "header",
+                    "description": "App-Code",
+                    "required":true
+                }],
+                "tags": [
+                    "Users"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/signIn": {
+            "post": {
+                "summary": "sign to ED",
+                "description": "sign to ED",
+                "operationId": "post",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "body",
+                    "in": "body",
+                    "description": "sign",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/signIn"
+                    }
+                },{
+                    "name": "x-app-code",
+                    "in": "header",
+                    "description": "App-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Users"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/resetPassword": {
+            "put": {
+                "summary": "Reset Password",
+                "description": "Reset Password to ED",
+                "operationId": "put",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "body",
+                    "in": "body",
+                    "description": "sign",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/resetPassword"
+                    }
+                },{
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true,
+                    "type": "string"
+                }],
+                "tags": [
+                    "Users"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/resend": {
+            "post": {
+                "summary":"resend pin",
+                "description": "resend pin",
+                "operationId": "post",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "body",
+                    "in": "body",
+                    "description": "user number",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/resendPin"
+                    }
+                }],
+                "tags": [
+                    "Users"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },     
+        "roles": {
+            "get": {
+                "summary": "Get Roles",
+                "description": "get by user token",
+                "operationId": "get",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true,
+                    "type": "string"
+                },{
+                    "name": "x-app-code",
+                    "in": "header",
+                    "description": "app-code",
+                    "required": true,
+                    "type": "string"
+                }],
+                "tags": [
+                    "Roles"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },   
+        "/organizations": {
+            "post": {
+                "summary": "Create Organization",
+                "description": "Create Organization",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "body",
+                    "in": "body",
+                    "description": "First Time in EMS",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/orgReq"
+                    }
+                }],
+                "tags": [
+                    "Organization"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/organizations/{id}": {
+            "get": {
+                "summary": "Get Organization",
+                "description": "get by id",
+                "operationId": "get",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "id",
+                    "in": "path",
+                    "description": "id of org",
+                    "required": true,
+                    "type": "string"
+                }],
+                "tags": [
+                    "Organization"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "update organization",
+                "description": "update organization ",
+                "operationId": "put",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "body",
+                    "description": "to update fields",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/orgReq"
+                    }
+                }, {
+                    "name": "id",
+                    "in": "path",
+                    "description": "organization id",
+                    "required": true,
+                    "type": "string"
+                }],
+                "tags": [
+                    "Organization"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+
+        },
+        "/divisions": {
+            "post": {
+                "summary": "Create Divisions",
+                "description": "Create by name and code",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "body",
+                    "in": "body",
+                    "description": "First Time in EMS",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/orgReq"
+                    }
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Divisions"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Get all divisions",
+                "description": "get by id",
+                "operationId": "get",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Divisions"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/departments": {
+            "post": {
+                "summary": "Create Departments",
+                "description": "Create by name and code",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "body",
+                    "in": "body",
+                    "description": "First Time in EMS",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/departmentReq"
+                    }
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Departments"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Get all Departments",
+                "description": "get Departments",
+                "operationId": "get",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }, {
+                    "name": "divisionId",
+                    "in": "query",
+                    "description": "division Id"
+                }],
+                "tags": [
+                    "Departments"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/designations": {
+            "post": {
+                "summary": "Create Designations",
+                "description": "Create by name and code",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "body",
+                    "in": "body",
+                    "description": "designation in EMS",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/designationReq"
+                    }
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Designations"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Get all designations",
+                "description": "get designations",
+                "operationId": "get",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }, {
+                    "name": "level",
+                    "in": "query",
+                    "description": "division Id"
+                }, {
+                    "name": "code",
+                    "in": "query",
+                    "description": "division Id"
+                }, {
+                    "name": "name",
+                    "in": "query",
+                    "description": "division Id"
+                }],
+                "tags": [
+                    "Designations"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/designations/{id}": {
+            "get": {
+                "summary": "Get single designations",
+                "description": "get designations",
+                "operationId": "get",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }, {
+                    "name": "id",
+                    "in": "path",
+                    "description": "division Id",
+                    "required": true
+                }],
+                "tags": [
+                    "Designations"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/employees": {
+            "post": {
+                "summary": "signUp employee",
+                "description": "signUp",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "body",
+                    "description": "First Time in AQUA",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/signupReq"
+                    }
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/signupRes"
+                        }
+                    },
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Get employees",
+                "description": "get employees",
+                "operationId": "get",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                        "name": "org-code",
+                        "in": "header",
+                        "description": "Org-Code",
+                        "required": true
+                    }, {
+                        "name": "status",
+                        "in": "query",
+                        "description": "set status",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "pageNo",
+                        "in": "query",
+                        "description": "pageNo",
+                        "required": false,
+                        "type": "number"
+                    },
+                    {
+                        "name": "serverPaging",
+                        "in": "query",
+                        "description": "serverPaging",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "name": "pageSize",
+                        "in": "query",
+                        "description": "pageSize",
+                        "required": false,
+                        "type": "number"
+                    }, {
+                        "name": "x-access-token",
+                        "in": "header",
+                        "description": "token",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/employees/makeTunnel": {
+            "post": {
+                "summary": "signup with Tunnel",
+                "description": "signUp",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "external-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/employees/{id}": {
+            "put": {
+                "summary": "update employee",
+                "description": "update employee ",
+                "operationId": "put",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "body",
+                    "description": "to update fields",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/updateEmpReq"
+                    }
+                }, {
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true,
+                    "type": "string"
+                }, {
+                    "name": "id",
+                    "in": "path",
+                    "description": "set my to to update yours profile otherwise id",
+                    "required": true,
+                    "type": "string"
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Get single employee",
+                "description": "get employee",
+                "operationId": "get",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }, {
+                    "name": "id",
+                    "in": "path",
+                    "description": "se my to get your data else 'id'",
+                    "required": true
+                }, {
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete single employee",
+                "description": "Delete employee",
+                "operationId": "get",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }, {
+                    "name": "id",
+                    "in": "path",
+                    "description": "se my to get your data else 'id'",
+                    "required": true
+                }, {
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/employees/changeStatus/{status}": {
+            "put": {
+                "summary": "update employee status",
+                "description": "update employee status",
+                "operationId": "put",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "body",
+                    "description": "to update fields",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/delBulkReq"
+                    }
+                }, {
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true,
+                    "type": "string"
+                }, {
+                    "name": "status",
+                    "in": "path",
+                    "description": "set my to to update yours profile otherwise id",
+                    "required": true,
+                    "type": "string"
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/employees/remove/bulk": {
+            "delete": {
+                "summary": "Delete bulk employees",
+                "description": "Delete bulk employees",
+                "operationId": "get",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "body",
+                    "description": "First Time in AQUA",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/delBulkReq"
+                    }
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }, {
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/employees/signIn": {
+            "post": {
+                "summary": "signIn employee",
+                "description": " signIn",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "body",
+                    "description": "First Time in AQUA",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/signupReq"
+                    }
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/employees/resendCode": {
+            "post": {
+                "summary": "resend Activation Code",
+                "description": "resend Activation Code",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "body",
+                    "description": "First Time in AQUA",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/recover"
+                    }
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "$ref": "#/definitions/signupRes"
+                        }
+                    },
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/employees/{id}/validate": {
+            "post": {
+                "summary": "validate activation code",
+                "description": "validation",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "body",
+                    "description": "First Time in AQUA",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/validation"
+                    }
+                }, {
+                    "name": "id",
+                    "in": "path",
+                    "description": "id of employee",
+                    "required": true,
+                    "type": "string"
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/employees/importer": {
+            "post": {
+                "summary": "Importer Employee DUMP",
+                "description": "Importer",
+                "operationId": "create",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "formData",
+                    "name": "file",
+                    "type": "file",
+                    "description": "Attendance XL details",
+                    "required": true
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }],
+                "tags": [
+                    "Employees"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/teams": {
+            "post": {
+                "summary": "create Reportee",
+                "description": "create Reportee",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "body",
+                    "description": "reportee data",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/reporteeReq"
+                    }
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }, {
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true,
+                    "type": "string"
+                }],
+                "tags": [
+                    "Teams"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "get Reportees",
+                "description": "create Reportee",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "Org-Code",
+                    "required": true
+                }, {
+                    "name": "mine",
+                    "in": "query",
+                    "description": "true to get your reportees"
+                }, {
+                    "name": "supervisor",
+                    "in": "query",
+                    "description": "true to get your supervisor"
+                }, {
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true,
+                    "type": "string"
+                }],
+                "tags": [
+                    "Teams"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/teams/{employeeId}": {
+            "delete": {
+                "summary": "Delete Member",
+                "description": "Delete Member",
+                "operationId": "delete",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "name": "employeeId",
+                    "in": "path",
+                    "description": "delete from team member",
+                    "required": true,
+                    "type": "string"
+                }, {
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "token",
+                    "required": true
+                }],
+                "tags": [
+                    "Teams"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "update Member",
+                "description": "update Member",
+                "operationId": "put",
+                "consumes": ["application/json"],
+                "produces": ["application.json"],
+                "parameters": [{
+                    "in": "body",
+                    "description": "reportee data",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/reporteeUpdateReq"
+                    }
+                }, {
+                    "name": "employeeId",
+                    "in": "path",
+                    "description": "delete from team member",
+                    "required": true,
+                    "type": "string"
+                }, {
+                    "name": "x-access-token",
+                    "in": "header",
+                    "description": "token",
+                    "required": true
+                }, {
+                    "name": "org-code",
+                    "in": "header",
+                    "description": "token",
+                    "required": true
+                }],
+                "tags": [
+                    "Teams"
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
+
+    "definitions": {
+
+        "validation": {
+            "type": "object",
+            "properties": {
+                "activationCode": {
+                    "type": "string"
+                }
+            }
+        },
+        "delBulkReq": {
+            "type": "object",
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "orgReq": {
+            "required": "deviceId",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                }
+            }
+        },
+        "orgDetails": {
+         "type": "object",
+         "properties": {
+             "name": {
+                 "type": "string"
+             },
+             "code": {
+                 "type":"string"
+             },
+             "owner":{
+                 "type":"object",
+                 "properties": {
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "role": {
+                      "type": "object",
+                        "properties": {
+                            "level":{
+                                "type":"string"
+                            },
+                            "permissions":{
+                                "type":"array"
+                            }
+                        }  
+                    }
+                 }
+                
+             }
+
+
+         }
+        },
+        "appReq": {            
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type":"object",
+                    "properties": {
+                        "name": {
+                            "type":"string"
+                        },
+                        "email": {
+                            "type": "string"
+                        }
+                    }
+                }
+                
+            }
+        },
+        "userReq": {
+            "type":"object",
+            "properties": {
+                "phone":{
+                    "type": "string"
+                },
+                "email": {
+                    "type":"string"
+                }
+            }
+        },
+        "verifyPin": {
+            "type": "object",
+            "properties": {
+                "pin": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "signIn": {
+            "type": "object",
+            "properties": {               
+                "phone": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "resendPin": {
+          "type": "object",
+          "properties": {
+              "phone": {
+                  "type": "string"
+              }
+          }
+        },
+        "resetPassword": {
+            "type":"object",
+            "properties": {
+                "password": {
+                    "type":"string"
+                }
+            }    
+        },
+        "reporteeReq": {
+            "required": "deviceId",
+            "type": "object",
+            "properties": {
+                "employeeId": {
+                    "type": "integer"
+                },
+                "supervisorId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "reporteeUpdateReq": {
+            "type": "object",
+            "properties": {
+                "supervisorId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "departmentReq": {
+            "required": "deviceId",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "divisionId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "designationReq": {
+            "required": "deviceId",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "integer"
+                }
+            }
+        },
+        "updateEmpReq": {
+            "type": "Object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "signupReq": {
+            "required": "user",
+            "type": "Object",
+
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "dob": {
+                    "type": "string"
+                },
+                "fatherName": {
+                    "type": "string"
+                },
+                "bloodGroup": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "address1": {
+                    "type": "string"
+                },
+                "address2": {
+                    "type": "string"
+                },
+                "district": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "pincode": {
+                    "type": "string"
+                }
+            }
+        },
+        "recover": {
+            "required": "user",
+            "type": "Object",
+
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "signupRes": {
+            "type": "object",
+            "properties": {
+                "isSuccess": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "sentMail": {
+                    "type": "boolean",
+                    "default": false
+                }
+            }
+        },
+
+        "Error": {
+            "type": "object",
+            "properties": {
+                "isSuccess": {
+                    "type": "boolean"
+                },
+                "error || message": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
