@@ -1,30 +1,103 @@
 'use strict'
+
+const mongoose = require('mongoose')
+
 module.exports = {
     phone: String,
-    email: String,
+    newPhone: String,
+    isPhoneValidate: {
+        type: Boolean,
+        default: false
+    },
+    email: {
+        type: String,
+        lowercase: true
+    },
+    newEmail: String,
+    isEmailValidate: {
+        type: Boolean,
+        default: false
+    },
+    facebookId: String,
+
+    code: String, // userName
+    previousCode: String,
+    isCodeUpdated: {
+        type: Boolean,
+        default: false
+    },
+
     otp: Number,
     password: String,
-    picUrl: { type: String }, // TODO: obsolete
     profile: {
-        firstName: { type: String, lowercase: true },
-        lastName: { type: String, lowercase: true },
-        dob: Date,
-        gender: {
+        firstName: {
             type: String,
-            enum: ['male', 'female', 'other']
+            lowercase: true
         },
+        lastName: {
+            type: String,
+            lowercase: true
+        },
+        dob: {
+            type: Date,
+            default: null
+        },
+        bloodGroup: String,
         pic: {
             url: String,
             thumbnail: String
+        },
+        gender: {
+            type: String,
+            enum: ['male', 'female', 'other', 'none', 'unknown'],
+            default: 'none'
         }
     },
-    identities: { // hash these fields
-        aadhaar: { type: String },
-        pan: { type: String },
-        passport: { type: String }
+    location: {
+        coordinates: {
+            type: [Number], // [<longitude>, <latitude>]
+            index: '2dsphere' // create the geospatial index
+        },
+        name: { type: String },
+        description: { type: String }
     },
-    isProfileComplete: { type: Boolean, default: false },
-    isPhoneValidate: { type: Boolean, default: false },
-    isEmailValidate: { type: Boolean, default: false },
-    isTemporary: { type: Boolean, default: false }
+    address: {
+        line1: String,
+        line2: String,
+        district: String,
+        city: String,
+        state: String,
+        pinCode: String,
+        country: String
+    },
+    identities: { // hash these fields
+        aadhaar: {
+            type: String
+        },
+        pan: {
+            type: String
+        },
+        passport: {
+            type: String
+        }
+    },
+    status: {
+        type: String,
+        default: 'active',
+        enum: ['active', 'inactive', 'blocked']
+    },
+    isProfileComplete: {
+        type: Boolean,
+        default: false
+    },
+    isTemporary: {
+        type: Boolean,
+        default: false
+    },
+
+    tenant: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'tenant',
+        required: true
+    }
 }

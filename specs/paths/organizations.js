@@ -25,7 +25,10 @@ module.exports = [{
         parameters: [
             'x-role-key',
             {
-                name: 'body', in: 'body', description: 'organization code', required: true,
+                name: 'body',
+                in: 'body',
+                description: 'organization code',
+                required: true,
                 schema: {
                     $ref: '#/definitions/isAvailableReq'
                 }

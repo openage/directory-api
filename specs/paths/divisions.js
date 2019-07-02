@@ -7,9 +7,9 @@ module.exports = [{
             'description': 'First Time in EMS',
             'required': true
         }, {
-            'name': 'org-code',
+            'name': 'x-organization-code',
             'in': 'header',
-            'description': 'Org-Code',
+            'description': 'organization code',
             'required': true
         }, {
             'name': 'tenant-api-key',

@@ -2,9 +2,16 @@
 var mongoose = require('mongoose')
 module.exports = {
     code: String,
-    email: String,
+    email: {
+        type: String,
+        lowercase: true
+    },
     phone: String,
     type: { type: String, lowercase: true }, // doctor, driver, pharmacist
+
+    doj: Date,
+    dol: Date,
+    reason: String,
 
     designation: {
         type: mongoose.Schema.Types.ObjectId,
@@ -34,7 +41,8 @@ module.exports = {
         bloodGroup: String,
         gender: {
             type: String,
-            enum: ['male', 'female', 'other']
+            enum: ['male', 'female', 'other', 'none', 'unknown'],
+            default: 'none'
         }
     },
     location: {
@@ -54,9 +62,11 @@ module.exports = {
         pinCode: String,
         country: String
     },
+    config: Object,
     user: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
+        ref: 'user',
+        required: [true, 'user required']
     },
     department: {
         type: mongoose.Schema.Types.ObjectId,
@@ -68,6 +78,7 @@ module.exports = {
     },
     organization: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'organization'
+        ref: 'organization',
+        required: [true, 'organization required!']
     }
 }

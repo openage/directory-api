@@ -4,6 +4,8 @@ const client = new (require('node-rest-client-promise')).Client()
 const employees = require('./employees')
 const roles = require('./roles')
 const db = require('../models')
+const roleService = require('./roles')
+const roleMapper = require('../mappers/role')
 
 const getHeader = (config, data) => {
     let headers = {}
@@ -107,11 +109,13 @@ exports.employeeUpdate = async (id, context) => {
 exports.roleUpdate = async (id, context) => {
     let log = logger.start(`roleUpdate: ${id}`)
 
-    let role = await db.role.findById(id).populate('user')
+    let role = await roleService.getById(id)
 
-    let tenant = await db.tenant.findById({ _id: role.tenant }).lean()
+    let tenant = await db.tenant.findById({ _id: role.tenant.id }).lean()
 
     let promises = []
+
+    let payload = roleMapper.toModel(role, context)
 
     tenant.services.forEach(service => {
         if (!service.hooks || !service.hooks.role || !service.hooks.role.onUpdate) {
@@ -122,7 +126,7 @@ exports.roleUpdate = async (id, context) => {
 
         promises.push(client.postPromise(hooksConfig.url, {
             headers: getHeader(hooksConfig, role),
-            data: role
+            data: payload
         })
             .then((response) => {
                 log.info('created :' + response.data.message)

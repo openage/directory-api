@@ -2,10 +2,15 @@
 var mongoose = require('mongoose')
 
 module.exports = {
-    code: String,
-    permissions: [{type: String}],
+    code: {
+        type: String,
+        required: true,
+        index: true
+    },
+    permissions: [{ type: String }],
     tenant: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'tenant'
+        ref: 'tenant',
+        required: true
     }
 }

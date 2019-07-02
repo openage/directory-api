@@ -2,7 +2,7 @@
 
 const user = require('./user')
 
-exports.toModel = (entity) => {
+exports.toModel = (entity, context) => {
     const model = {
         id: entity.id,
         purpose: entity.purpose,
@@ -10,13 +10,13 @@ exports.toModel = (entity) => {
         status: entity.status,
         app: entity.app,
         timeStamp: entity.timeStamp,
-        user: entity.user ? user.toModel(entity.user) : undefined
+        user: entity.user ? user.toModel(entity.user, context) : undefined
     }
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map((entity) => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

@@ -6,7 +6,7 @@ const activityLogs = require('../services/activity-logs')
 
 exports.create = async (req) => {
     const log = await activityLogs.create(req.body, req.context)
-    return mapper.toModel(log)
+    return mapper.toModel(log, req.context)
 }
 
 exports.search = async (req) => {
@@ -35,11 +35,11 @@ exports.search = async (req) => {
 
     const logs = await activityLogs.search(query, req.context)
 
-    return mapper.toSearchModel(logs)
+    return mapper.toSearchModel(logs, req.context)
 }
 
 exports.get = async (req) => {
     const log = await activityLogs.get(req.params.id, req.context)
 
-    return mapper.toModel(log)
+    return mapper.toModel(log, req.context)
 }

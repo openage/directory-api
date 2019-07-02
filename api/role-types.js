@@ -1,50 +1,19 @@
 'use strict'
 
 const mapper = require('../mappers/role-type')
-const roleTypeService = require('../services/role-types')
+const service = require('../services/role-types')
 
 exports.create = async (req) => {
-    let log = req.context.logger.start('create')
-    let newRoleType = await roleTypeService.create({
-        code: req.body.code,
-        permissions: req.body.permissions
-    }, req.context)
-
-    log.end()
-
-    return mapper.toModel(newRoleType)
+    let newRoleType = await service.create(req.body, req.context)
+    return mapper.toModel(newRoleType, req.context)
 }
 
 exports.search = async (req) => {
-    let log = req.context.logger.start('search')
-
-    let query = {
-        tenant: req.context.tenant.id
-    }
-
-    if (req.context.organization) {
-    query.code = {
-        $regex: '^' + req.context.organization.type,
-        $options: 'i'
-    }
-    }
-
-    let roleTypeList = await db.roleType.find(query)
-
-    log.end()
-
-    return mapper.toSearchModel(roleTypeList)
+    let result = await service.search(req.query, null, req.context)
+    return mapper.toSearchModel(result.items, req.context)
 }
 
 exports.update = async (req) => {
-    let log = req.context.logger.start('api:role-types:update')
-
-    let model = {
-        code: req.body.code,
-        permissions: req.body.permissions
-    }
-
-    let roleType = roleTypeService.update(model, req.params.id, req.context)
-
-    return mapper.toModel(roleType)
+    let roleType = service.update(req.params.id, req.body, req.context)
+    return mapper.toModel(roleType, req.context)
 }

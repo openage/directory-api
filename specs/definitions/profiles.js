@@ -3,5 +3,8 @@ module.exports = {
     lastName: 'string',
     dob: 'string',
     gender: 'string',
-    pic: 'string'
+    pic: {
+        url: 'string',
+        thumbnail: 'string'
+    }
 }

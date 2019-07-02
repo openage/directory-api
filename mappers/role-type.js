@@ -1,6 +1,6 @@
 'use strict'
 
-exports.toModel = (entity) => {
+exports.toModel = (entity, context) => {
     let model = {
         id: entity.id,
         code: entity.code,
@@ -18,8 +18,8 @@ exports.toModel = (entity) => {
     return model
 }
 
-exports.toSearchModel = (entities) => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

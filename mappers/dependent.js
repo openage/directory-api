@@ -21,21 +21,20 @@ const extractProfile = (entity) => {
     return profile
 }
 
-exports.toModel = (entity) => {
+exports.toModel = (entity, context) => {
     let model = {
         id: entity.id,
         email: entity.email,
         phone: entity.phone,
         profile: extractProfile(entity.profile),
-        isProfileComplete: entity.isProfileComplete,
         isProfileComplete: entity.isProfileComplete
     }
 
     return model
 }
 
-exports.toSearchModel = (entities) => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

@@ -1,46 +1,66 @@
 'use strict'
 let mapper = require('../mappers/department')
-const departments = require('../services/departments')
-const logger = require('@open-age/logger')('departments')
-const divisions = require('../services/divisions')
+const departmentService = require('../services/departments')
+const db = require('../models')
 
-exports.create = async (req, res) => {
-    let model = req.body
-    let data = {
-        code: model.code,
-        name: model.name,
-        division: model.division
+exports.get = async (req) => {
+    let entity = await departmentService.get(req.params.id, req.context)
+
+    if (!entity) {
+        return 'department does not exist'
     }
-
-    try {
-        let division = await divisions.getById(model.division, req.context)
-        if (!division) {
-            return res.failure('division not found')
-        }
-
-        let department = await departments.create(data, req.context)
-
-        return res.data(mapper.toModel(department))
-    } catch (error) {
-        return res.failure(error)
-    }
+    return mapper.toModel(entity, req.context)
 }
 
-exports.search = async (req, res) => {
-    logger.start('search')
+exports.create = async (req) => {
+    let entity = await departmentService.create(req.body, req.context)
+    return mapper.toModel(entity, req.context)
+}
 
-    let where = {}
-    if (req.query.name) {
-        where['name'] = {
-            '$regex': req.query.name
+exports.update = async (req) => {
+    let model = req.body
+
+    let entity = await db.department.findById(req.params.id)
+    if (!entity) {
+        throw new Error('department not found')
+    }
+    let updatedEntity = await departmentService.update(model, entity, req.context)
+
+    return mapper.toModel(updatedEntity, req.context)
+}
+
+exports.search = async (req) => {
+    let items = await departmentService.search(req.query, req.context)
+    return mapper.toSearchModel(items, req.context)
+}
+
+exports.delete = async (req) => {
+    let department = await db.department.findOne({ '_id': (req.params.id).toObjectId() })
+
+    if (!department) {
+        throw new Error('department not found')
+    }
+    let entity = department
+    entity.status = 'inactive'
+    await entity.save()
+    // TODO: move all the employees to default designation
+    // await db.department.remove({ '_id': (req.params.id).toObjectId() })
+    return 'department removed successfully'
+}
+exports.bulk = async (req) => {
+    for (const item of req.body.items) {
+        let entity
+        if (item.code) {
+            entity = await departmentService.get({
+                code: item.code
+            }, req.context)
+        }
+        if (entity) {
+            await departmentService.update(item, entity, req.context)
+        } else {
+            await departmentService.get(item, req.context)
         }
     }
-    try {
-        let items = await departments.search(where, req.context)
 
-        return res.page(mapper.toSearchModel(items))
-    } catch (error) {
-        logger.error(error)
-        return res.failure(error)
-    }
+    return `added/updated '${req.body.items.length}' item(s)`
 }

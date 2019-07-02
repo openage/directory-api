@@ -5,7 +5,10 @@ module.exports = [{
             'name': 'body',
             'in': 'body',
             'description': 'role details',
-            'required': true
+            'required': true,
+            'schema': {
+                '$ref': '#/definitions/rolesCreateReq'
+            }
         }, {
             'name': 'x-role-key',
             'in': 'header',
@@ -105,6 +108,58 @@ module.exports = [{
             'default': {
                 'description': 'Unexpected error'
 
+            }
+        }
+    }
+}, {
+    url: '/{id}/dependent',
+    post: {
+        parameters: ['x-role-key', {
+            'name': 'id',
+            'in': 'path',
+            'description': '"my" to add in your role or default role id of user',
+            'required': true,
+            'type': 'string'
+        }, {
+                name: 'body',
+                in: 'body',
+                required: true,
+                schema: {
+                    '$ref': '#/definitions/dependentsCreateReq'
+                }
+            }],
+        responses: {
+            default: {
+                description: 'Unexpected error',
+                schema: {
+                    '$ref': '#/definitions/rolesRes'
+                }
+            }
+        }
+    }
+}, {
+    url: '/{id}/dependent/bulk',
+    post: {
+        parameters: ['x-role-key', {
+            'name': 'id',
+            'in': 'path',
+            'description': '"my" to add in your role or default role id of user',
+            'required': true,
+            'type': 'string'
+        }, {
+                name: 'body',
+                in: 'body',
+                required: true,
+                schema: {
+                    '$ref': '#/definitions/dependentsBulkModelReq'
+                }
+            }],
+        responses: {
+            default: {
+                description: 'Unexpected error',
+                schema: {
+                    '$ref': '#/definitions/rolesRes'
+                }
             }
         }
     }

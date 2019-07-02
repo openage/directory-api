@@ -1,23 +1,18 @@
 'use strict'
 
-const logger = require('@open-age/logger')('processors/employee/create')
-const communications = require('../../../../services/communications')
-const roles = require('../../../../services/roles')
-const db = require('../../../../models')
+const sendIt = require('@open-age/send-it-client')
 
-exports.process = async (data, context) => {
-    logger.start('process')
-
-    const employee = await db.employee.findById(data.id).populate('supervisor')
-
-    const role = await roles.get({
-        employee: employee
+exports.process = async (employee, context) => {
+    await sendIt.dispatch({
+        data: {
+            id: employee.id,
+            name: employee.name,
+            status: employee.status
+        },
+        template: {
+            code: 'employee-updated'
+        },
+        to: employee.user
+        // options: options
     }, context)
-
-    logger.info(`sending message to ${role.key}`)
-
-    return communications.send({ status: employee.status, orgType: context.organization.type },
-        'notify-employee-on-status-updation', [{ roleKey: role.key }],
-        context.organization.owner.key, ['push']
-    )
 }

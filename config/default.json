@@ -14,6 +14,10 @@
         "name": "Open Age",
         "emailId": "no_reply@openage.in"
     },
+    "auth": {
+        "otp": "112233",
+        "password": "123456"
+    },
     "storage": {
         "provider": "drive"
     },

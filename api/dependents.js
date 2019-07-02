@@ -4,11 +4,8 @@ const dependentService = require('../services/dependents')
 const mapper = require('../mappers/dependent')
 
 exports.create = async (req) => {
-    let log = req.context.logger.start('api/dependents:create')
-
     let dependentUser = await dependentService.create(req.body, req.context)
-
-    return mapper.toModel(dependentUser)
+    return mapper.toModel(dependentUser, req.context)
 }
 
 exports.bulk = async (req) => {
@@ -21,5 +18,5 @@ exports.bulk = async (req) => {
         })
     }
     log.end()
-    return mapper.toSearchModel(dependentList)
+    return mapper.toSearchModel(dependentList, req.context)
 }

@@ -1,54 +1,45 @@
 'use strict'
-const db = require('../models')
 const userService = require('./users')
 const roleService = require('./roles')
-// const shortid = require('shortid')
 
-const create = async (model, context) => {
+const roleGetter = require('./role-getter')
+const userGetter = require('./user-getter')
+
+exports.create = async (model, primaryRoleId, context) => {
     let log = context.logger.start('services/dependents:create')
+
+    let primaryRole = await roleGetter.get(primaryRoleId, context)
+
+    if (!primaryRole) {
+        throw new Error('primary role not found')
+    }
+
     let dependentUser = null
+    let dependentRole = null
 
-    let query = {
-        $or: []
-    }
-
-    if (model.phone) {
-        query.$or.push({ phone: model.phone })
-    }
-
-    if (model.email) {
-        query.$or.push({ email: model.email })
-    }
-
-    if (query.$or.length) {
-        dependentUser = await db.user.findOne(query)
-    }
-
-    if (!dependentUser) {
-        dependentUser = await userService.create(model, context)
+    if (model.role.id) {
+        dependentRole = await roleGetter.get(model.role, context)
     } else {
-        dependentUser = await userService.update(model, dependentUser, context)
+        dependentUser = await userGetter.get(model.user, context)
+
+        if (!dependentUser) {
+            dependentUser = await userService.create(model.role.user, context)
+            dependentRole = dependentUser.roles[0]
+        } else {
+            dependentUser = await userService.update(dependentUser.id, model.role.user, context)
+            dependentRole = await roleGetter.getDefault(dependentUser, context)
+        }
     }
 
-    let dependentRole = await db.role.findOne({
-        user: dependentUser.id,
-        organization: { $exists: false },
-        employee: { $exists: false }
-    }) || await roleService.create({
-        user: dependentUser,
-        tenant: context.tenant.id,
-        // code: shortid.generate()
-    }, context)
-
-    await roleService.update({
-        dependents: [{
-            role: dependentRole.id,
-            relation: model.relation
-        }]
-    }, context.role, context)
+    if (!dependentRole) {
+        throw new Error('dependent role not found')
+    }
 
     log.end()
-    return dependentUser
+    return roleService.update(primaryRole.id, {
+        dependents: [{
+            role: dependentRole,
+            relation: model.relation
+        }]
+    }, context)
 }
-
-exports.create = create

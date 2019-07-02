@@ -1,109 +1,195 @@
 'use strict'
 
-let _ = require('underscore')
 let logger = require('@open-age/logger')('services/designations')
-let updationScheme = require('../helpers/updateEntities')
 const db = require('../models')
 
-const create = async (model, context) => {
-    logger.start('create')
-    model.organization = context.organization
-    let query = {
-        code: model.code,
-        organization: context.organization.id
-    }
-    let designation = await db.designation.findOrCreate(query, model)
+const getNewCode = async (field, context) => {
+    let lock = await context.lock(`organization:${context.organization.id}:${field}`)
 
-    return db.designation.findById(designation.result.id).populate('organization')
+    let organization = await db.organization.findById(context.organization.id)
+
+    let newCode = (organization[field] || 0) + 1
+
+    organization[field] = newCode
+
+    await organization.save()
+
+    lock.release()
+
+    return '' + newCode
 }
 
-const update = async (model, designation) => {
-    logger.start('update')
+const getNewDesignationCode = async (options, context) => {
+    return getNewCode('lastDesignationCode', context)
+}
+const create = async (model, context) => {
+    let log = context.logger.start('services/designations:create')
 
-    updationScheme.update(model, designation)
-    return designation.save()
+    if (!model.name) {
+        throw new Error('name is required')
+    }
+    if (!model.code) {
+        model.code = await getNewDesignationCode({
+            name: model.name
+        }, context)
+    }
+    let entity = await db.designation.findOne({
+        code: model.code,
+        organization: context.organization.id
+    })
+
+    if (entity) {
+        throw new Error('designation code ' + model.code + ' already exists')
+    }
+
+    entity = await new db.designation({
+        code: model.code.toLowerCase(),
+        name: model.name,
+        level: model.level || 1,
+        organization: context.organization
+    }).save()
+
+    log.end()
+
+    return entity
+}
+
+const update = async (model, entity, context) => {
+    context.logger.debug('services/designations:update')
+
+    if (model.code) {
+        if (entity.code.toLowerCase() !== model.code.toLowerCase()) {
+            let exists = await db.designation.findOne({
+                code: model.code,
+                organization: context.organization.id
+            })
+
+            if (exists) {
+                throw new Error('designation code ' + model.code + ' with status ' + exists.status + ' already exists')
+            }
+        }
+
+        entity.code = model.code
+    }
+
+    if (model.name) {
+        entity.name = model.name
+    }
+
+    if (model.level) {
+        entity.level = model.level
+    }
+
+    return entity.save()
 }
 
 const get = async (query, context) => {
-    logger.start('get')
+    context.logger.start('get')
+    if (!query) {
+        query = { code: 'default', name: 'Default' }
+    }
+    let designation
     if (typeof query === 'string') {
         if (query.isObjectId()) {
-            return db.designation.findById(query)
+            designation = await db.designation.findById(query)
         } else {
-            return await db.designation.findOne({
-                code: query,
+            designation = await db.designation.findOne({
+                code: {
+                    $regex: query.code,
+                    $options: 'i'
+                },
                 organization: context.organization.id
-            }) || create({
-                code: query,
-                name: query
-            }, context)
+            })
+        }
+        if (designation) {
+            return designation
         }
     }
     if (query.id) {
-        return db.designation.findById(query.id)
+        designation = await db.designation.findById(query.id)
+        if (designation) {
+            return designation
+        }
     }
 
     if (query.code) {
-        return await db.designation.findOne({
-            code: query.code,
+        designation = await db.designation.findOne({
+            code: {
+                $regex: query.code,
+                $options: 'i'
+            },
             organization: context.organization.id
-        }) || create({
-            code: query.code,
-            name: query.name || query.code
-        }, context)
-    }
-    if (query.name) {
-        return await db.designation.findOne({
-            name: query.name,
-            organization: context.organization.id
-        }) || create({
-            code: query.code || query.name,
-            name: query.name
-        }, context)
+        })
+        if (designation) {
+            return designation
+        }
     }
 
-    return null
+    if (query.name) {
+        designation = await db.designation.findOne({
+            name: {
+                $regex: query.name,
+                $options: 'i'
+            },
+            organization: context.organization.id
+        })
+
+        if (!designation) {
+            designation = await create({
+                name: query.name,
+                code: query.code
+            }, context)
+        }
+    }
+
+    return designation
 }
 
 const getById = async (id) => {
-    logger.start('getById')
-
     return db.designation.findById(id)
 }
 
 const search = async (query, context) => {
-    logger.start('search')
+    let log = context.logger.start('services/designations:search')
+
     query = query || {}
-    if (!query.code) {
-        query.code = { '$ne': 'default' }
+    let where = {
+        organization: context.organization.id,
+        status: query.status || 'active'
     }
 
-    query.organization = context.organization.id
-    let designations = await db.designation.find(query)
+    // if (query.name) {
+    //     where['name'] = {
+    //         $regex: query.name,
+    //         $options: 'i'
+    //     }
+    // }
+    if (query.name) {
+        where['name'] = {
+            $regex: query.name,
+            $options: 'i'
+        }
+    }
+
+    if (query.code) {
+        where['code'] = {
+            $regex: query.code,
+            $options: 'i'
+        }
+    } else {
+        where['code'] = {
+            $ne: 'default'
+        }
+    }
+
+    let designations = await db.designation.find(where)
+
+    log.end()
     return designations
 }
 
-const designationManager = async (name, context) => {
-    context.logger.start('designationManager')
-
-    let designationName = name ? name.toLowerCase() : null
-
-    if (!designationName) { return }
-
-    let designationCode = ''
-    if (designationName.split(' ').length === 1) {
-        designationCode = designationName
-    } else {
-        _.each(designationName.split(' '), word => {
-            designationCode += word.charAt(0)
-        })
-    }
-
-    return create({ name: designationName, code: designationCode }, context)
-}
 exports.get = get
 exports.create = create
 exports.update = update
 exports.getById = getById
 exports.search = search
-exports.designationManager = designationManager

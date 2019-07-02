@@ -2,42 +2,47 @@
 var mongoose = require('mongoose')
 
 module.exports = {
+    key: {
+        type: String,
+        required: [true, 'ROLE_KEY_REQUIRED'],
+        index: true,
+        unique: true
+    },
     type: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'roleType'
+        ref: 'roleType',
+        required: [true, 'role-type required']
     },
     status: {
         type: String,
-        default: 'active',
-        enum: ['active', 'inactive']
+        default: 'new',
+        enum: ['in-complete', 'new', 'active', 'inactive', 'archived', 'blocked']
     },
-    code: String,
-    key: String, // this key is unique
     permissions: [{ type: String }], // additional permissions
-    previousCode: String,
-    isCodeUpdated: {
-        type: Boolean,
-        default: false
-    },
     dependents: [{
         role: { type: mongoose.Schema.Types.ObjectId, ref: 'role' },
-        relation: String          //son, brother
+        relation: String // son, brother
     }],
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: [true, 'user required']
+    },
     employee: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'employee'
     },
-    tenant: {
+    student: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'tenant'
-    },
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
+        ref: 'student'
     },
     organization: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'organization'
+    },
+    tenant: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'tenant',
+        required: [true, 'tenant required']
     }
-
 }

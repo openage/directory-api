@@ -12,8 +12,8 @@ exports.process = async (data, context) => {
         name: role.employee.name,
         id: role.id
     },
-        'notify-admin-on-employee-creation', [{ roleKey: context.organization.owner.key }],
-        role.key, ['push']
+    'notify-admin-on-employee-creation', [{ roleKey: context.organization.owner.key }],
+    role.key, ['push']
     ).then((communications) => {
         context.logger.info('push delivered')
     })

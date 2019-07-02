@@ -79,36 +79,36 @@ exports.requiresSupervisor = (req, res, next) => { // todo
             next()
         })
 
-    // db.teamMember.findOne({
-    //         where: { RegularEmployeeId: req.employee.id },
-    //         include: [{
-    //             model: db.employee,
-    //             as: 'Supervisor',
-    //             include: [db.designation]
-    //         }],
-    //         attributes: ['id']
-    //     })
-    // .then(teamMember => {
-    //         if (teamMember) {
-    //             req.supervisor = teamMember.Supervisor;
-    //         }
-    // next();
-    // dbQuery.findEmployee({ id: teamMember.supervisorId })
-    //     .then(supervisor => {
-    //         req.supervisor = supervisor;
-    //         next();
-    //     });
-    // })
+        // db.teamMember.findOne({
+        //         where: { RegularEmployeeId: req.employee.id },
+        //         include: [{
+        //             model: db.employee,
+        //             as: 'Supervisor',
+        //             include: [db.designation]
+        //         }],
+        //         attributes: ['id']
+        //     })
+        // .then(teamMember => {
+        //         if (teamMember) {
+        //             req.supervisor = teamMember.Supervisor;
+        //         }
+        // next();
+        // dbQuery.findEmployee({ id: teamMember.supervisorId })
+        //     .then(supervisor => {
+        //         req.supervisor = supervisor;
+        //         next();
+        //     });
+        // })
         .catch(err => {
             res.failure(err)
         })
 }
 
 exports.requiresOrg = (req, res, next) => {
-    var orgCode = req.body.orgCode || req.query.orgCode || req.headers['org-code']
+    var orgCode = req.body.orgCode || req.query.orgCode || req.headers['x-organization-code']
 
     if (!orgCode) {
-        return res.failure('org-code is required.')
+        return res.failure('organization-code is required.')
     }
     dbQuery.findOrg({
         code: orgCode

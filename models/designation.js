@@ -8,5 +8,10 @@ module.exports = {
     organization: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'organization'
+    },
+    status: {
+        type: String,
+        default: 'active',
+        enum: ['active', 'inactive']
     }
 }

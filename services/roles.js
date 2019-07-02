@@ -1,60 +1,49 @@
 'use strict'
-const logger = require('@open-age/logger')('services/roles')
 const Guid = require('guid')
 const db = require('../models')
 const types = require('./role-types')
-let updationScheme = require('../helpers/updateEntities')
 const offline = require('@open-age/offline-processor')
+const profileService = require('./profiles')
+
+const roleGetter = require('./role-getter')
+const userGetter = require('./user-getter')
+
+const organizationSevice = require('./organizations')
 const employeeService = require('./employees')
 
-const getCodeFromProfile = async (profile) => {
-
-    const selectCodeFromProfile = (profile) => {
-        if (profile.firstName && profile.lastName) {
-            return `${profile.firstName}.${profile.lastName}${Math.floor(Math.random() * 10000) + 10000}`
-        }
-
-        if (profile.firstName) {
-            return `${profile.firstName}${Math.floor(Math.random() * 10000000) + 10000000}`
-        }
-
-        return Math.floor(Math.random() * 1000000000) + 1000000000
-    }
-
-    let code = selectCodeFromProfile(profile)
-
-    let role = await getByCode(code)
-
-    if (!role) {
-        return code
-    } else {
-        getCodeFromProfile(profile)
-    }
-}
-
-const uniqueCodeGenerator = async (user) => {
-    let log = logger.start('services/roles:uniqueCodeGenerator')
-    let uniqueCode
-
+const uniqueCodeGenerator = async (user, context) => {
+    context.logger.silly('services/roles:uniqueCodeGenerator')
     if (user.phone) {
-        let role = await getByCode(user.phone)
+        let role = await roleGetter.getByCode(user.phone, context)
         if (!role) {
-            uniqueCode = user.phone
-        } else {
-            uniqueCode = await getCodeFromProfile(user.profile)
+            return user.phone
         }
-    } else {
-        uniqueCode = await getCodeFromProfile(user.profile)
     }
 
-    log.info(`unique code: ${uniqueCode}`)
-    log.end()
-    return uniqueCode
+    const getCodeFromProfile = async () => {
+        let code = profileService.generateCode(user.profile)
+        let role = await roleGetter.getByCode(code, context)
+
+        if (!role) {
+            return code
+        } else {
+            return getCodeFromProfile(user.profile)
+        }
+    }
+
+    return getCodeFromProfile()
 }
 
-const set = (model, entity, context) => {
+const set = async (model, entity, context) => {
+    if (model.code && (model.code !== entity.code)) {
+        if (entity.isCodeUpdated) {
+            throw new Error('CODE_ALREADY_UPDATED')
+        }
 
-    if (model.code) {
+        if (await roleGetter.get(model.code, context)) {
+            throw new Error('CODE_INVALID')
+        }
+
         entity.previousCode = entity.code
         entity.isCodeUpdated = true
         entity.code = model.code
@@ -72,8 +61,10 @@ const set = (model, entity, context) => {
         let permissions = (entity.permissions.concat(entity.type.permissions)) || []
         for (let index = 0; index < model.permissions.length; index++) {
             let permission = model.permissions[index]
-            if (permissions.every(item => item !== permission) && (permission === 'null')) {
-                entity.permissions.push(permission)
+            if (permissions.every(item => item !== permission)) {
+                if (permission !== 'null') {
+                    entity.permissions.push(permission)
+                }
             }
         }
     }
@@ -83,70 +74,130 @@ const set = (model, entity, context) => {
         for (let index = 0; index < model.dependents.length; index++) {
             let dependent = model.dependents[index]
             if (entity.id === dependent.role) { continue }
-            if (entityDependents.every(item => item.role !== dependent.role)) {
+            if (entityDependents.every(item => item.role !== dependent.role.id)) {
                 entityDependents.push(dependent)
             }
         }
         entity.dependents = entityDependents
     }
 }
+/**
+ * role being created by user
+ *
+*/
+exports.create = async (data, context) => {
+    const log = context.logger.start('services/roles:create')
+    let user
+    if (data.user) {
+        user = await userGetter.get(data.user, context)
+    } else {
+        user = context.user
+    }
 
-const create = async (data, context) => {
-    data.tenant = context.tenant
-    data.organization = context.organization
+    if (data.organization && !context.organization) {
+        context.organization = await organizationSevice.get(data.organization, context)
+
+        if (!context.organization) {
+            context.organization = await organizationSevice.create(data.organization, context)
+        }
+    }
+
+    let employee
+    if (data.employee) {
+        employee = await db.employee.findOne({
+            user: data.user,
+            organization: context.organization
+        })
+
+        if (employee) {
+            throw new Error('EMPLOYEE_ALREADY_EXIST')
+        }
+
+        data.employee.user = user
+        employee = await employeeService.create(data.employee, context)
+
+        data.code = employee.code
+    }
+
+    let student
+    if (data.student) {
+        // TODO: implement
+        // data.student.user = user
+        // student = await studentService.create(data.student, context)
+        // data.code = student.code
+    }
+
+    data.permissions = data.permissions || []
     data.key = Guid.create().value
+    data.status = context.organization ? 'new' : 'active' // new role in an orgnization needs to approved
+
     if (!data.type) {
         if (data.employee) {
-            data.type = await types.get('employee', context)
+            let organizationType = context.organization.type || 'organization'
+            let userType = employee.type || 'employee'
+            data.type = `${organizationType}.${userType}`
+            if (!context.organization.owner) { // the new user would be given owner role
+                data.type = `${organizationType}.superadmin`
+                data.status = 'active'
+            }
         } else if (data.student) {
-            data.type = await types.get('student', context)
+            data.type = 'student'
+        } else if (!context.tenant.owner) { // the new user would be given owner role
+            data.type = 'tenant.admin'
+            data.status = 'active'
         } else {
-            data.type = await types.get('user', context)
+            data.type = 'user'
         }
     }
+    let roleType = await types.get(data.type, context)
 
     if (!data.code) {
-        if (data.employee) {
-            data.code = data.employee.code
-        } else if (data.student) {
-            data.code = data.student.code
-        } else {
-            data.code = await uniqueCodeGenerator(data.user)
-        }
+        data.code = await uniqueCodeGenerator(data.user, context)
     }
 
-
-    if (data.user && !data.employee && !data.organization && !data.code) {
-        throw new Error('role code required')
+    if (!data.employee && !data.organization && !data.code) {
+        throw new Error('CODE_INVALID')
     }
 
-    let role = await new db.role(data).save()
-    // context.processSync = true
+    let role = await new db.role({
+        key: data.key,
+        code: data.code,
+        user: user,
+        type: roleType,
+        employee: employee,
+        student: student,
+        organization: context.organization,
+        tenant: context.tenant
+    }).save()
 
-    // offline.queue('role', 'create', {
-    //     id: role.id
-    // }, context)
+    if (context.organization && !context.organization.owner) {
+        context.organization.owner = role
+        await context.organization.save()
+    }
 
-    return db.role.findById(role.id).populate('type employee organization tenant user')
+    await offline.queue('role', 'create', role, context)
+    log.end()
+    return role
 }
 
-const getOrCreate = async (data, context) => {
-    let role = await get(data, context)
-
-    if (role) { return role }
-
-    return create(data, context)
-}
-
-const search = async (context) => {
-    logger.start('services/roles:search')
-    let query = {
-        tenant: context.tenant.id,
-        user: context.user,
-        status: { $ne: 'inactive' }
+exports.search = async (query, page, context) => {
+    context.logger.start('services/roles:search')
+    let where = {
+        tenant: context.tenant
+        // organization: context.organization //TODO:
     }
 
-    let roleList = db.role.find(query).populate('type user organization tenant').populate({
+    if (query.status) {
+        where.status = query.status
+    } else {
+        where.status = { $ne: 'inactive' }
+    }
+
+    if (query.user) {
+        where.user = query.user
+    }
+
+    let roleList = await db.role.find(where).populate('type user organization tenant').populate({
         path: 'employee',
         populate: {
             path: 'designation division'
@@ -161,87 +212,79 @@ const search = async (context) => {
     return roleList
 }
 
-const getByKey = async (key, context) => {
-    logger.start('getByKey')
-
-    return db.role.findOne({ key: key }).populate('type employee user organization')
-}
-
-const getById = async (id) => {
-    logger.start('getById')
-
-    return db.role.findById(id).populate('type user organization tenant').populate({
-        path: 'employee',
-        populate: {
-            path: 'designation division'
-        }
-    })
-}
-
-const get = async (query, context) => {
-    let where = context.where()
-    // if (query.type) {
-    //     where.add('type.code', query.type.code || query.type)
-    // }
-    if (query.employee) {
-        where.add('employee', query.employee.id || query.employee)
-    }
-    if (query.user) {
-        where.add('user', query.user.id || query.user)
-    }
-    if (query.organization) {
-        where.add('organization', query.organization.id || query.organization)
-    }
-    where.add('code', query.code)
-    where.add('key', query.key)
-    where.add('_id', query.id)
-
-    return db.role.findOne(where.clause).populate('type employee user organization tenant')
-}
-
-const getByCode = async (code) => {
-    logger.start('getByCode')
-
-    return db.role.findOne({
-        $or: [{
-            code: code
-        }, {
-            previousCode: code
-        }]
-    }).populate('user')
-}
-
-const update = async (model, role, context) => {
+exports.update = async (id, model, context) => {
     context.logger.start('services/roles:update')
 
+    let role = await roleGetter.get(id, context)
+
     if (model.type) {
-        model.type = await types.find(model.type, context)
+        model.type = await types.get(model.type, context)
     }
 
-    set(model, role, context)
-
-    if ((model.status === 'active') && role.employee) {
-        if (role.employee.status !== 'active') {
-            await employeeService.update({ status: 'active' }, role.employee, context)
-        }
-    }
+    await set(model, role, context)
 
     let updatedRole = await role.save()
 
-    context.processSync = true
-
-    offline.queue('role', 'update', {
+    await offline.queue('role', 'update', {
         id: updatedRole.id
     }, context)
 
     return updatedRole
 }
 
-exports.getOrCreate = getOrCreate
-exports.create = create
-exports.search = search
-exports.getByKey = getByKey
-exports.getById = getById
-exports.get = get
-exports.getByCode = getByCode
-exports.update = update
+const getWithDependent = async (roleId, context) => {
+    let log = context.logger.start('services:roles/getWithDependent')
+
+    let role = db.role.findById(roleId).populate('type user tenant').populate({
+        path: 'dependents.role',
+        populate: {
+            path: 'user type'
+        }
+    })
+
+    log.end()
+    return role
+}
+
+const addExtraPermission = async (permission, role, context) => { // add permission to role or send request to admin
+    let log = context.logger.start(`services/roles:addExtraPermissions`)
+
+    let ownerId = context.organization.owner._doc ? context.organization.owner.id : context.organization.owner.toString()
+
+    let existingPermissions = role.permissions.concat(role.type.permissions)
+
+    let hasPermissions = existingPermissions.every(item => item !== permission)
+
+    if (hasPermissions || (role.status !== 'active')) {
+        if (ownerId === role.id && hasPermissions) {
+            role.permissions.push(permission)
+            await role.save()
+        } else {
+            context.processSync = true
+            offline.queue('role', 'create', {
+                id: role.id,
+                empType: role.employee.type,
+                permissions: [permission]
+            }, context)
+        }
+    }
+
+    log.end()
+    return role
+}
+
+exports.getOrCreate = async (data, context) => {
+    let role = await roleGetter.get(data, context)
+
+    if (role) { return role }
+
+    return exports.create(data, context)
+}
+
+exports.getWithDependent = getWithDependent
+exports.addExtraPermission = addExtraPermission
+
+exports.getByKey = roleGetter.getByKey
+exports.getById = roleGetter.getById
+exports.get = roleGetter.get
+exports.getByCode = roleGetter.getByCode

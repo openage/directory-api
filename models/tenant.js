@@ -3,6 +3,10 @@ var mongoose = require('mongoose')
 module.exports = {
     code: { type: String, required: true },
     name: String,
+    logo: {
+        url: String,
+        thumbnail: String
+    },
     key: String,
     config: Object,
     owner: {
@@ -18,6 +22,7 @@ module.exports = {
         logo: String,
         code: String,
         name: String,
+        url: String, // api root url
         apps: {
             web: String,
             android: String,

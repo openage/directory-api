@@ -1,5 +1,7 @@
 'use strict'
 global.Promise = require('bluebird')
+process.env.APP = 'api'
+
 const express = require('express')
 const logger = require('@open-age/logger')('bin/api').start('booting')
 const webServerConfig = require('config').get('webServer')
@@ -7,6 +9,8 @@ const http = require('http')
 var app = express()
 
 require('../helpers/string')
+require('../helpers/number')
+require('../helpers/toObjectId')
 require('../settings/database').configure(logger)
 require('../settings/express').configure(app, logger)
 require('../settings/routes').configure(app, logger)

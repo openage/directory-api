@@ -1,11 +1,12 @@
 'use strict'
+
 const fs = require('fs')
 const changeCase = require('change-case')
 const definitions = require('../definitions')
 const paths = {}
 
 const setHeaders = (param) => {
-    if (!param.name.startsWith('x-')) {
+    if (!param.name || !param.name.startsWith('x-')) {
         return param
     }
 
@@ -258,12 +259,21 @@ const setDefaults = (data, name) => {
         item.actions.delete = setActionDefaults(data.delete, { type: 'delete', name: name, url: data.url })
     }
     return item
-};
+}
+
+const fetch = (path) => {
+    var id = require.resolve(path)
+    if (require.cache[id] !== undefined) {
+        delete require.cache[id]
+    }
+
+    return require(path)
+}
 (function () {
     fs.readdirSync(__dirname).forEach(function (file) {
         if (file.indexOf('.js') && file.indexOf('index.js') < 0) {
             let name = changeCase.camelCase(file.split('.')[0])
-            let data = require('./' + file)
+            let data = fetch(`./${file}`)
             if (data.forEach) {
                 data.forEach(item => {
                     let path = setDefaults(item, name)

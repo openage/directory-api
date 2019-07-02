@@ -5,6 +5,7 @@ module.exports = {
     phone: 'string',
     email: 'string',
     otp: 'string',
+    status: 'string',
     profile: profile,
     identity: identity,
     isTemporary: 'boolean'

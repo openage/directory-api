@@ -11,7 +11,7 @@ exports.canCreate = async (req) => {
 
     // if (!req..owner) { return 'organization owner required' }
 
-    let organization = await organizationService.getByCode(req.body.code)
+    let organization = await organizationService.getByCode(req.body.code, req.context)
     if (organization) {
         return 'organization already exist'
     }

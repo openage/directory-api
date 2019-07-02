@@ -1,6 +1,6 @@
 'use strict'
 
-exports.toModel = (entity) => {
+exports.toModel = (entity, context) => {
     if (!entity) {
         return null
     }
@@ -14,7 +14,8 @@ exports.toModel = (entity) => {
     if (entity.pic) {
         model.pic = {
             url: entity.pic.url,
-            thumbnail: entity.pic.thumbnail
+            thumbnail: entity.pic.thumbnail,
+            data: entity.pic.thumbnail
         }
     }
 

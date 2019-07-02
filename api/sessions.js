@@ -3,20 +3,17 @@ const sessionService = require('../services/sessions')
 const mapper = require('../mappers/session')
 
 exports.create = async (req) => {
-    let session = await sessionService.create(req.body, req.context)
-    return mapper.toModel(session)
+    let session = await sessionService.initiate(req.body, req.context)
+    return mapper.toModel(session, req.context)
 }
 
 exports.update = async (req) => {
-    let log = req.context.logger.start('api:sessions:update')
-
-    return sessionService.update(req.body, req.params.id, req.context).then((session) => {
-        log.end()
+    return sessionService.update(req.params.id, req.body, req.context).then((session) => {
         return 'session successfully active'
     })
 }
 
 exports.get = async (req) => {
     let session = await sessionService.get(req.params.id, req.context)
-    return mapper.toModel(session)
+    return mapper.toModel(session, req.context)
 }

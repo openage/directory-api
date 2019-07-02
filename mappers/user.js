@@ -1,11 +1,29 @@
 'use strict'
 
 const serviceProvider = require('config').get('providers')
-const profile = require('./profile')
+const profileMapper = require('./profile')
 
 const extractServices = (organization, tenant) => {
     if (!organization || !tenant) {
         return []
+    }
+
+    const serviceMapper = (service, level1, level2) => {
+        level1 = level1 || {}
+        level2 = level2 || {}
+        let apps = service.apps || level1.apps || level2.apps || {}
+
+        return {
+            code: service.code,
+            logo: service.logo || level1.logo || level2.logo,
+            name: service.name || level1.name || level2.name,
+            url: service.url || level1.url || level2.url,
+            apps: {
+                web: apps.web,
+                android: apps.android,
+                iOS: apps.iOS
+            }
+        }
     }
 
     const services = []
@@ -17,36 +35,16 @@ const extractServices = (organization, tenant) => {
                 return
             }
 
-            const model = {
-                code: service.code,
-                logo: service.logo || tenantLevel.logo || configLevel.logo,
-                name: service.name || tenantLevel.name || configLevel.name
-            }
-
-            let apps = service.apps || tenantLevel.apps || configLevel.apps || {}
-
-            model.apps = {
-                web: apps.web,
-                android: apps.android,
-                iOS: apps.iOS
-            }
-
+            const model = serviceMapper(service, tenantLevel, configLevel)
             services.push(model)
         })
-    } else {
+    } else if (tenant.services && tenant.services.length) {
         tenant.services.forEach(service => {
             let configLevel = serviceProvider[service.code]
             if (!configLevel) {
                 return
             }
-            const model = {
-                code: service.code,
-                logo: service.logo || configLevel.logo,
-                name: service.name || configLevel.name
-            }
-
-            // model.apps = service.apps || configLevel.apps
-
+            const model = serviceMapper(service, configLevel)
             services.push(model)
         })
     }
@@ -54,12 +52,31 @@ const extractServices = (organization, tenant) => {
     return services
 }
 
-exports.toModel = (entity) => {
+exports.toSessionModel = (entity) => {
+    let model = {
+        id: entity.id
+    }
+
+    if (entity.session) {
+        model.session = {
+            id: entity.session.id,
+            timeStamp: entity.session.timeStamp,
+            status: entity.session.status
+        }
+    }
+
+    return model
+}
+
+exports.toModel = (entity, context) => {
+    let defaultProfile = profileMapper.toModel(entity.profile, context)
     let model = {
         id: entity.id,
+        code: entity.code,
         email: entity.email,
         phone: entity.phone,
-        profile: profile.toModel(entity.profile),
+        status: entity.status,
+        profile: defaultProfile,
         identities: {},
         picUrl: entity.picUrl,
         isProfileComplete: entity.isProfileComplete,
@@ -82,26 +99,11 @@ exports.toModel = (entity) => {
                 id: item.id,
                 key: item.key,
                 code: item.code,
+                profile: profileMapper.toModel(entity.profile, context),
                 permissions: [],
                 dependents: [],
                 isCodeUpdated: item.isCodeUpdated,
                 timeStamp: item.timeStamp
-            }
-
-            if (!(item.organization || item.employee)) {
-                role.isDefaultRole = true
-                role.dependents.push({ // todo obsolete
-                    id: item.id,
-                    key: item.key,
-                    code: item.code,
-                    permissions: [],
-                    user: {
-                        phone: model.phone,
-                        profile: model.profile
-                    },
-                    isDefaultRole: true,
-                    isCodeUpdated: item.isCodeUpdated
-                })
             }
 
             if (item.permissions) {
@@ -118,46 +120,69 @@ exports.toModel = (entity) => {
                 }
             }
 
+            if (!(item.organization || item.employee)) {
+                role.isDefaultRole = true
+                role.dependents.push({ // todo obsolete
+                    role: {
+                        id: item.id,
+                        key: item.key,
+                        code: item.code,
+                        permissions: role.permissions,
+                        user: {
+                            phone: model.phone,
+                            profile: profileMapper.toModel(model.profile, context)
+                        },
+                        isDefaultRole: true,
+                        isCodeUpdated: item.isCodeUpdated
+                    },
+                    relation: 'me'
+                })
+            }
+
             if (item.dependents && item.dependents.length) {
                 item.dependents.forEach(element => {
-                    let dependentRole = {
-                        id: element.role.id,
-                        code: element.role.code,
-                        key: element.role.key,
-                        relation: element.relation,
-                        permissions: [],
-                        isDefaultRole: false
+                    let dependent = {
+                        role: {
+                            id: element.role.id,
+                            code: element.role.code,
+                            key: element.role.key,
+                            relation: element.relation,
+                            permissions: [],
+                            isDefaultRole: false
+                        },
+                        relation: element.relation
                     }
 
                     if (element.permissions) {
                         element.role.permissions.forEach((permission) => {
-                            dependentRole.permissions.push(permission)
+                            dependent.role.permissions.push(permission)
                         })
                     }
 
                     if (element.type) {
                         if (element.role.type.permissions) {
                             element.role.type.permissions.forEach((permission) => {
-                                dependentRole.permissions.push(permission)
+                                dependent.role.permissions.push(permission)
                             })
                         }
                     }
 
                     if (element.role.user) {
-                        dependentRole.user = element.role.user._doc ? {
+                        dependent.role.user = element.role.user._doc ? {
                             id: element.role.user.id,
                             email: element.role.user.email,
                             phone: element.role.user.phone,
+                            code: element.role.user.code,
                             relation: element.relation,
-                            profile: profile.toModel(element.role.user.profile),
+                            profile: profileMapper.toModel(element.role.user.profile, context),
                             identities: {},
                             picUrl: element.role.user.picUrl,
                             isProfileComplete: element.role.user.isProfileComplete
                         } : {
-                                id: element.role.user.toString()
-                            }
+                            id: element.role.user.toString()
+                        }
                     }
-                    role.dependents.push(dependentRole)
+                    role.dependents.push(dependent)
                 })
             }
 
@@ -168,8 +193,20 @@ exports.toModel = (entity) => {
                     code: item.organization.code,
                     shortName: item.organization.shortName,
                     type: item.organization.type,
-                    address: item.organization.address,
+                    address: {},
                     services: []
+                }
+
+                if (item.organization.address) {
+                    organization.address = {
+                        line1: item.organization.address.line1,
+                        line2: item.organization.address.line2,
+                        district: item.organization.address.district,
+                        city: item.organization.address.city,
+                        state: item.organization.address.state,
+                        pinCode: item.organization.address.pinCode,
+                        country: item.organization.address.country
+                    }
                 }
 
                 if (item.tenant) {
@@ -179,10 +216,13 @@ exports.toModel = (entity) => {
             }
 
             if (item.employee) {
+                role.profile = item.employee.profile
+                    ? profileMapper.toModel(item.employee.profile, context) : defaultProfile
                 let employee = {
                     id: item.employee.id,
                     code: item.employee.code,
-                    profile: profile.toModel(item.employee.profile)
+                    type: item.employee.type,
+                    profile: role.profile
                 }
 
                 if (item.employee.designation) {
@@ -190,18 +230,30 @@ exports.toModel = (entity) => {
                         id: item.employee.designation.id,
                         name: item.employee.designation.name
                     } : {
-                            id: item.employee.designation.toString()
-                        }
+                        id: item.employee.designation.toString()
+                    }
+                }
+
+                if (item.employee.department) {
+                    employee.department = item.employee.department._doc ? {
+                        id: item.employee.department.id,
+                        name: item.employee.department.name
+                    } : {
+                        id: item.employee.department.toString()
+                    }
                 }
 
                 if (item.employee.division) {
                     employee.division = item.employee.division._doc ? {
                         id: item.employee.division.id,
-                        name: item.employee.division.name
+                        name: item.employee.division.name,
+                        code: item.employee.division.code,
+                        status: item.employee.division.status
                     } : {
-                            id: item.employee.division.toString()
-                        }
+                        id: item.employee.division.toString()
+                    }
                 }
+
                 role.employee = employee
             }
             roles.push(role)
@@ -212,8 +264,8 @@ exports.toModel = (entity) => {
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map((entity) => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

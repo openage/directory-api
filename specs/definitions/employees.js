@@ -10,5 +10,6 @@ module.exports = {
     location: location,
     address: address,
     profile: profile,
+    config: Object,
     role: role
 }

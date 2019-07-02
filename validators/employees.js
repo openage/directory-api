@@ -4,7 +4,7 @@ const fileExtractor = require('../extractors/employees')
 const fileUpload = require('../helpers/fileUpload')
 
 exports.canCreate = async (req) => {
-    if (!req.body.phone && !req.body.email) { return 'phone or email is required' }
+    // if (!req.body.phone && !req.body.email) { return 'phone or email is required' }
 
     if (!req.body.type) {
         return 'employee type required'
@@ -53,4 +53,4 @@ exports.canSearch = async (req) => {
     if (!req.context.organization) {
         return 'permissions not found'
     }
-} 
+}

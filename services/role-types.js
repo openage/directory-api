@@ -1,69 +1,76 @@
 'use strict'
 
-const logger = require('@open-age/logger')('services/role-types')
 const db = require('../models')
-const updateScheme = require('../helpers/updateEntities')
 
-const create = async (data, context) => {
-    logger.start('create')
-    data.tenant = context.tenant
-    data.permissions = data.permissions || []
-
-    if (data.code === 'admin' && data.permissions.indexOf('admin') === -1) {
-        data.permissions.push('admin')
+const set = (model, entity, context) => {
+    if (model.permissions) {
+        entity.permissions = model.permissions
     }
-    let roleType = await new db.roleType(data).save()
+    return entity
+}
+
+exports.create = async (data, context) => {
+    let roleType = new db.roleType({
+        code: data.code.toLowerCase(),
+        permissions: data.permissions || [data.code.toLowerCase()],
+        tenant: context.tenant
+    })
+
+    set(data, roleType, context)
+    await roleType.save()
     return roleType
 }
 
-const get = async (code, context) => {
-    logger.start('get')
-    let roleType = await db.roleType.findOne({
-        code: code,
-        tenant: context.tenant.id
-    })
-
-    if (roleType !== null) {
-        return roleType
+exports.get = async (query, context) => {
+    context.logger.silly('services/role-types:get')
+    let entity
+    let where = {
+        tenant: context.tenant
     }
-
-    return create({
-        code: code,
-        permissions: [code]
-    }, context)
-}
-
-const update = async (model, id, context) => {
-    let log = context.logger.start('services:role-types:update')
-
-    let roleType = await db.roleType.findById(id)
-
-    return updateScheme.update(model, roleType).save()
-}
-
-const find = async (query, context) => {
-    context.logger.start('services:role-types:find')
-
     if (typeof query === 'string') {
         if (query.isObjectId()) {
             return db.roleType.findById(query)
-        } else {
-            return db.roleType.findOne({ code: query })
         }
-    }
+        where['code'] = query.toLowerCase()
+        entity = await db.roleType.findOne(where)
 
-    if (query.id) {
+        if (entity) { return entity }
+        return exports.create({
+            code: query
+        }, context)
+    } else if (query.id) {
         return db.roleType.findById(query.id)
+    } else if (query.code) {
+        where['code'] = query.code.toLowerCase()
+        entity = await db.roleType.findOne(where)
+        if (entity) { return entity }
+        return exports.create({
+            code: query.code
+        }, context)
     }
-
-    if (query.code) {
-        return db.roleType.findOne({ code: query.code })
-    }
-
     return null
 }
 
-exports.create = create
-exports.get = get
-exports.update = update
-exports.find = find
+exports.update = async (id, model, context) => {
+    context.logger.silly('services/role-types:update')
+    let roleType = await db.roleType.findById(id)
+    set(model, roleType, context)
+    await roleType.save()
+}
+
+exports.search = async (query, paging, context) => {
+    let where = {
+        tenant: context.tenant
+    }
+
+    if (context.organization) {
+        where.code = {
+            $regex: '^' + context.organization.type,
+            $options: 'i'
+        }
+    }
+
+    return {
+        items: await db.roleType.find(where)
+    }
+}

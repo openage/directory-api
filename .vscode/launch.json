@@ -5,7 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "api(dev)",
+            "type": "node",
+            "request": "launch",
+            "name": "test",
+            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+            "args": [
+                "-u",
+                "tdd",
+                "--no-timeouts",
+                "--recursive",
+                "--colors",
+                "${workspaceFolder}/tests"
+            ],
+            "internalConsoleOptions": "openOnSessionStart"
+        },
+        {
+            "name": "dev-api",
             "type": "node",
             "request": "launch",
             "program": "${workspaceRoot}/bin/app.js",
@@ -21,11 +36,31 @@
                 "NODE_ENV": "dev"
             },
             "console": "internalConsole",
+            "outputCapture": "std",
+            "sourceMaps": false
+        },
+        {
+            "name": "uat-api",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceRoot}/bin/app.js",
+            "stopOnEntry": false,
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "uat"
+            },
+            "console": "internalConsole",
             "sourceMaps": false,
             "outputCapture": "std"
         },
         {
-            "name": "api(qa)",
+            "name": "qa-api",
             "type": "node",
             "request": "launch",
             "program": "${workspaceRoot}/bin/app.js",
@@ -48,7 +83,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "listener(dev)",
+            "name": "dev-listener",
             "env": {
                 "NODE_ENV": "dev"
             },
@@ -58,7 +93,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "listener(qa)",
+            "name": "qa-listener",
             "env": {
                 "NODE_ENV": "qa"
             },

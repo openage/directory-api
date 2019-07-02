@@ -1,16 +1,26 @@
 'use strict'
 
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     var model = {
         id: entity.id,
         name: entity.name,
         code: entity.code,
         status: entity.status,
         type: entity.type,
-        profile: entity.profile,
-        address: entity.address,
         email: entity.email,
-        phone: entity.phone
+        phone: entity.phone,
+        config: entity.config,
+        doj: entity.doj,
+        dol: entity.dol,
+        reason: entity.reason
+    }
+
+    if (entity.profile) {
+        model.profile = entity.profile.toObject()
+    }
+
+    if (entity.address) {
+        model.address = entity.address.toObject()
     }
 
     if (entity.organization) {
@@ -20,9 +30,12 @@ exports.toModel = entity => {
             name: entity.organization.name,
             shortName: entity.organization.shortName,
             type: entity.organization.type,
-            profile: entity.organization.profile,
-            owner: entity.organization.owner
+            profile: entity.organization.profile
         }
+
+        // if (entity.organization.owner) {
+        //     model.organization.owner = entity.organization.owner
+        // }
     }
 
     if (entity.supervisor) {
@@ -39,54 +52,69 @@ exports.toModel = entity => {
         if (entity.supervisor.designation) {
             model.supervisor.designation = entity.supervisor.designation._doc ? {
                 id: entity.supervisor.designation.id,
+                code: entity.supervisor.designation.code,
                 name: entity.supervisor.designation.name
             } : {
-                    id: entity.supervisor.designation.toString()
-                }
+                id: entity.supervisor.designation.toString()
+            }
         }
         if (entity.supervisor.division) {
             model.supervisor.division = entity.supervisor.division._doc ? {
                 id: entity.supervisor.division.id,
+                code: entity.supervisor.division.code,
                 name: entity.supervisor.division.name
             } : {
-                    id: entity.supervisor.division.toString()
-                }
+                id: entity.supervisor.division.toString()
+            }
+        }
+
+        if (entity.supervisor.department) {
+            model.supervisor.department = entity.supervisor.department._doc ? {
+                id: entity.supervisor.department.id,
+                code: entity.supervisor.department.code,
+                name: entity.supervisor.department.name
+            } : {
+                id: entity.supervisor.department.toString()
+            }
         }
         if (entity.supervisor.organization) {
             model.supervisor.organization = entity.supervisor.organization._doc ? {
                 id: entity.supervisor.organization.id,
                 code: entity.supervisor.organization.name
             } : {
-                    id: entity.supervisor.organization.toString()
-                }
+                id: entity.supervisor.organization.toString()
+            }
         }
     }
 
     if (entity.designation) {
         model.designation = entity.designation._doc ? {
             id: entity.designation.id,
+            code: entity.designation.code,
             name: entity.designation.name
         } : {
-                id: entity.designation.toString()
-            }
+            id: entity.designation.toString()
+        }
     }
 
     if (entity.department) {
         model.department = entity.department._doc ? {
             id: entity.department.id,
+            code: entity.department.code,
             name: entity.department.name
         } : {
-                id: entity.department.toString()
-            }
+            id: entity.department.toString()
+        }
     }
 
     if (entity.division) {
         model.division = entity.division._doc ? {
             id: entity.division.id,
+            code: entity.division.code,
             name: entity.division.name
         } : {
-                id: entity.division.toString()
-            }
+            id: entity.division.toString()
+        }
     }
 
     if (entity.role) {
@@ -103,17 +131,21 @@ exports.toModel = entity => {
                 })
             }
         }
+
+        if (model.role.permissions.toObject) {
+            model.role.permissions = model.role.permissions.toObject()
+        }
     }
     return model
 }
 
-exports.modelForAMS = entities => {
+exports.modelForAMS = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }
 
-exports.toFullModel = entity => {
+exports.toFullModel = (entity, context) => {
     var model = {
         id: entity.id,
         name: entity.name,
@@ -141,13 +173,13 @@ exports.toFullModel = entity => {
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }
 
-exports.toShortModel = entities => {
+exports.toShortModel = (entities, context) => {
     return entities.map(entity => {
         let model = {
             id: entity.id,

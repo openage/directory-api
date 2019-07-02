@@ -7,17 +7,24 @@ module.exports = {
         index: true,
         unique: true
     },
+    logo: {
+        url: String,
+        thumbnail: String
+    },
     name: String,
     shortName: String,
-    type: { type: String },    // hospital, clinic, pharmacy
+    type: { type: String }, // hospital, clinic, pharmacy
     previousCode: String,
     isCodeUpdated: {
         type: Boolean,
         default: false
     },
-    branding: {
-        logo: String
-    },
+
+    email: String,   // primary contact
+    phone: String,
+
+    about: String,
+
     location: {
         coordinates: {
             type: [Number], // [<longitude>, <latitude>]
@@ -40,6 +47,7 @@ module.exports = {
         logo: String,
         code: String,
         name: String,
+        url: String,
         apps: {
             web: String,
             android: String,
@@ -48,18 +56,25 @@ module.exports = {
     }],
     owner: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'role',
-        required: [true, 'owner required']
+        ref: 'role'
     },
+    meta: Object,
 
     lastEmployeeCode: { type: Number, default: 1000 },
     lastDivisionCode: { type: Number, default: 0 },
     lastDepartmentCode: { type: Number, default: 0 },
     lastDesignationCode: { type: Number, default: 0 },
+    lastContractorCode: { type: Number, default: 0 },
 
     status: {
         type: String,
         default: 'active',
         enum: ['new', 'active', 'inactive']
+    },
+
+    tenant: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'tenant'
+        //    required: true TODO: add tenant to prod
     }
 }
