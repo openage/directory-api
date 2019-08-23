@@ -67,8 +67,10 @@ exports.toModel = (entity, context) => {
         location: entity.location,
         address: entity.address,
         meta: entity.meta,
+        logo: entity.logo,
         services: [],
         status: entity.status,
+        isProfileCompleted: entity.isProfileCompleted,
         lastEmployeeCode: entity.lastEmployeeCode || null,
         lastDivisionCode: entity.lastDivisionCode || null,
         lastDepartmentCode: entity.lastDepartmentCode || null,
@@ -105,8 +107,10 @@ exports.toSummary = entity => {
         id: entity.id,
         code: entity.code,
         name: entity.name,
+        type: entity.type,
         logo: entity.logo,
-        status: entity.status
+        status: entity.status,
+        isProfileCompleted: entity.isProfileCompleted
     }
 }
 

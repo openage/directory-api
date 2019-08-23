@@ -58,15 +58,17 @@ const set = async (model, entity, context) => {
     }
 
     if (model.permissions && model.permissions.length) {
-        let permissions = (entity.permissions.concat(entity.type.permissions)) || []
-        for (let index = 0; index < model.permissions.length; index++) {
-            let permission = model.permissions[index]
-            if (permissions.every(item => item !== permission)) {
-                if (permission !== 'null') {
-                    entity.permissions.push(permission)
-                }
-            }
-        }
+        // let permissions = (entity.permissions.concat(entity.type.permissions)) || []
+        // for (let index = 0; index < model.permissions.length; index++) {
+        //     let permission = model.permissions[index]
+        //     if (permissions.every(item => item !== permission)) {
+        //         if (permission !== 'null') {
+        //             entity.permissions.push(permission)
+        //         }
+        //     }
+        // }
+
+        entity.permissions = [...new Set(model.permissions)];
     }
 
     if (model.dependents && model.dependents.length) {
@@ -215,7 +217,7 @@ exports.search = async (query, page, context) => {
 exports.update = async (id, model, context) => {
     context.logger.start('services/roles:update')
 
-    let role = await roleGetter.get(id, context)
+    let role = await db.role.findById(id).populate('type')
 
     if (model.type) {
         model.type = await types.get(model.type, context)
@@ -283,6 +285,8 @@ exports.getOrCreate = async (data, context) => {
 
 exports.getWithDependent = getWithDependent
 exports.addExtraPermission = addExtraPermission
+
+exports.uniqueCodeGenerator = uniqueCodeGenerator
 
 exports.getByKey = roleGetter.getByKey
 exports.getById = roleGetter.getById

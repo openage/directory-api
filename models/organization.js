@@ -60,6 +60,11 @@ module.exports = {
     },
     meta: Object,
 
+    isProfileCompleted: {
+        type: Boolean,
+        default: false
+    },
+
     lastEmployeeCode: { type: Number, default: 1000 },
     lastDivisionCode: { type: Number, default: 0 },
     lastDepartmentCode: { type: Number, default: 0 },

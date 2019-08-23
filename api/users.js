@@ -48,6 +48,12 @@ exports.resetPassword = async (req) => {
     return exports.update(req, req.context)
 }
 
+exports.changePassword = async (req) => {
+    let user = await users.updatePassword(req.body, req.context.user, req.context)
+
+    return mapper.toModel(user, req.context)
+}
+
 exports.update = async (req) => {
     let user = await users.update('me', req.body, req.context)
     return mapper.toModel(user, req.context)

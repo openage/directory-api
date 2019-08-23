@@ -6,13 +6,14 @@ exports.process = async (session, context) => {
     await sendIt.dispatch({
         data: {
             otp: session.otp,
-            purpose: session.purpose,
-            device: session.device,
             app: session.app,
+            device: session.device,
+            user: session.user,
+            purpose: session.purpose,
             timeStamp: session.timeStamp
         },
         template: {
-            code: 'session-initiated'
+            code: session.templateCode || 'session-initiated'
         },
         to: session.user,
         options: { skipInbox: true }

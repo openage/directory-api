@@ -54,3 +54,13 @@ exports.canSearch = async (req) => {
         return 'permissions not found'
     }
 }
+
+exports.canExists = async (req) => {
+    if (!req.context.organization) {
+        return 'permissions not found'
+    }
+
+    if (!req.query.phone && !req.query.email && !req.query.code) {
+        return 'phone, email or code required'
+    }
+}

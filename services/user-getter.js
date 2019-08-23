@@ -123,16 +123,18 @@ exports.getByFacebookId = async (facebookId, context) => {
 exports.getByEmployeeCode = async (code, context) => {
     let log = context.logger.start('services/users:getByEmployeeCode')
 
-    let user = db.user.findOne({
-        isTemporary: {
-            $ne: true
-        },
+    let employee = await db.employee.findOne({
         code: code,
-        tenant: context.tenant
-    })
+        organization: context.organization
+        // tenant: context.tenant
+    }).populate('user')
+
+    if (!employee) {
+        throw new Error('employee not found')
+    }
 
     log.end()
-    return user
+    return employee.user
 }
 
 exports.getByStudentCode = async (code, context) => {

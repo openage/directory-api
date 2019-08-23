@@ -33,11 +33,12 @@ exports.canResendOtp = async (req) => {
 }
 
 exports.canSignIn = async (req) => {
-    if (!req.body.phone && !req.body.email && !req.body.code) {
+    let payload = req.body
+    if (!payload.phone && !payload.email && !payload.code && !payload.employee && !payload.employee.code) {
         return 'phone, email or code required'
     }
 
-    if (!req.body.password) {
+    if (!payload.password) {
         return 'password required'
     }
 }

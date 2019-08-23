@@ -16,7 +16,7 @@ api.get = async (req) => {
 }
 
 api.codeAvailable = async (req) => {
-    let organization = await service.getByCode(req.body.code)
+    let organization = await service.getByCode(req.body.code, req.context)
 
     let data = {
         isAvailable: !organization // false if exist

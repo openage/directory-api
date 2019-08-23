@@ -19,6 +19,10 @@ exports.toModel = (entity, context) => {
         model.profile = entity.profile.toObject()
     }
 
+    if (entity.user && entity.user.lastSeen) {
+        model.lastSeen = entity.user.lastSeen
+    }
+
     if (entity.address) {
         model.address = entity.address.toObject()
     }
@@ -55,8 +59,8 @@ exports.toModel = (entity, context) => {
                 code: entity.supervisor.designation.code,
                 name: entity.supervisor.designation.name
             } : {
-                id: entity.supervisor.designation.toString()
-            }
+                    id: entity.supervisor.designation.toString()
+                }
         }
         if (entity.supervisor.division) {
             model.supervisor.division = entity.supervisor.division._doc ? {
@@ -64,8 +68,8 @@ exports.toModel = (entity, context) => {
                 code: entity.supervisor.division.code,
                 name: entity.supervisor.division.name
             } : {
-                id: entity.supervisor.division.toString()
-            }
+                    id: entity.supervisor.division.toString()
+                }
         }
 
         if (entity.supervisor.department) {
@@ -74,16 +78,16 @@ exports.toModel = (entity, context) => {
                 code: entity.supervisor.department.code,
                 name: entity.supervisor.department.name
             } : {
-                id: entity.supervisor.department.toString()
-            }
+                    id: entity.supervisor.department.toString()
+                }
         }
         if (entity.supervisor.organization) {
             model.supervisor.organization = entity.supervisor.organization._doc ? {
                 id: entity.supervisor.organization.id,
                 code: entity.supervisor.organization.name
             } : {
-                id: entity.supervisor.organization.toString()
-            }
+                    id: entity.supervisor.organization.toString()
+                }
         }
     }
 
@@ -93,8 +97,8 @@ exports.toModel = (entity, context) => {
             code: entity.designation.code,
             name: entity.designation.name
         } : {
-            id: entity.designation.toString()
-        }
+                id: entity.designation.toString()
+            }
     }
 
     if (entity.department) {
@@ -103,8 +107,8 @@ exports.toModel = (entity, context) => {
             code: entity.department.code,
             name: entity.department.name
         } : {
-            id: entity.department.toString()
-        }
+                id: entity.department.toString()
+            }
     }
 
     if (entity.division) {
@@ -113,8 +117,8 @@ exports.toModel = (entity, context) => {
             code: entity.division.code,
             name: entity.division.name
         } : {
-            id: entity.division.toString()
-        }
+                id: entity.division.toString()
+            }
     }
 
     if (entity.role) {

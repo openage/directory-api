@@ -68,9 +68,12 @@ const create = async (claims, logger) => {
             }
         }
         if (user._doc) {
-            context.user = user
+            user.lastSeen = new Date()
+            context.user = await user.save()
         } else if (user.id) {
             context.user = await db.user.findById(user.id)
+            context.user.lastSeen = new Date()
+            await context.user.save()
         }
     }
 

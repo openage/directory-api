@@ -36,6 +36,8 @@ exports.initiate = async (model, context) => {
         tenant: context.tenant
     }).save()
 
+    session.templateCode = model.templateCode || 'session-initiated'
+
     await offline.queue('session', 'initiate', session, context)
     log.end()
     return session

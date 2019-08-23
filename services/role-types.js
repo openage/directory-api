@@ -3,6 +3,14 @@
 const db = require('../models')
 
 const set = (model, entity, context) => {
+    if (model.name) {
+        entity.name = model.name
+    }
+
+    if (model.description) {
+        entity.description = model.description
+    }
+
     if (model.permissions) {
         entity.permissions = model.permissions
     }
@@ -12,9 +20,10 @@ const set = (model, entity, context) => {
 exports.create = async (data, context) => {
     let roleType = new db.roleType({
         code: data.code.toLowerCase(),
-        permissions: data.permissions || [data.code.toLowerCase()],
         tenant: context.tenant
     })
+
+    data.permissions = data.permissions || [data.code.toLowerCase()]
 
     set(data, roleType, context)
     await roleType.save()
@@ -63,12 +72,12 @@ exports.search = async (query, paging, context) => {
         tenant: context.tenant
     }
 
-    if (context.organization) {
-        where.code = {
-            $regex: '^' + context.organization.type,
-            $options: 'i'
-        }
-    }
+    // if (context.organization) {
+    //     where.code = {
+    //         $regex: '^' + context.organization.type,
+    //         $options: 'i'
+    //     }
+    // }
 
     return {
         items: await db.roleType.find(where)

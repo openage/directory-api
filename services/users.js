@@ -24,7 +24,7 @@ const set = async (model, entity, context) => {
         entity.password = crypto.toHash(model.password)
     }
 
-    if (model.email && entity.email !== model.email) {
+    if (model.email && entity.email !== model.email.toLowerCase()) {
         if (!validator.isEmail(model.email)) {
             throw new Error(`${model.email} email is not valid`)
         }
@@ -39,7 +39,7 @@ const set = async (model, entity, context) => {
         }
     }
     if (model.phone && model.phone !== entity.phone) {
-        if (!validator.isMobilePhone(model.phone, context)) {
+        if (!validator.isMobilePhone(model.phone, 'any')) {
             throw new Error(`${model.phone} phone is not valid`)
         }
 
@@ -131,11 +131,13 @@ const create = async (model, context) => {
  */
 exports.sendOtp = async (model, context) => {
     let entity = await userGetter.get(model, context)
+
     let session = await sessions.initiate({
         purpose: 'login',
         device: model.device,
         app: model.app,
-        user: entity
+        user: entity,
+        templateCode: model.templateCode
     }, context)
     entity.otp = session.otp // TODO: obsolete
     await entity.save()

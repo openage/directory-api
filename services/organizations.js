@@ -96,7 +96,7 @@ const getByIdOrCode = async (identifier, context) => {
 
     let query = identifier.isObjectId() ? { _id: identifier } : { code: identifier }
 
-    return db.organization.findOne(query)
+    return db.organization.findOne(query).populate('owner')
 }
 
 const set = async (model, organization, context) => {
@@ -153,6 +153,10 @@ const set = async (model, organization, context) => {
         organization.meta = model.meta
     }
 
+    if (model.isProfileCompleted) {
+        organization.isProfileCompleted = model.isProfileCompleted
+    }
+
     if (model.location) {
         organization.location = await locationService.get(model, organization.location, context)
     }
@@ -175,7 +179,7 @@ const set = async (model, organization, context) => {
 exports.update = async (id, model, context) => {
     let entity
 
-    entity = await db.organization.findById(id).populate('owner')
+    entity = await getByIdOrCode(id, context)
 
     await set(model, entity, context)
 

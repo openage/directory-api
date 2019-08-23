@@ -20,6 +20,8 @@ module.exports = {
     },
     facebookId: String,
 
+    lastSeen: Date,
+
     code: String, // userName
     previousCode: String,
     isCodeUpdated: {

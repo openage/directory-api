@@ -5,6 +5,9 @@ const paging = require('../helpers/paging')
 const db = require('../models')
 
 let moment = require('moment')
+const roleService = require('../services/roles')
+
+const offline = require('@open-age/offline-processor')
 
 exports.create = async (req) => {
     let model = req.body
@@ -12,6 +15,12 @@ exports.create = async (req) => {
         model.email = `${model.code}@${req.context.organization.code}.com`
     }
     let employee = await employeeService.create(model, req.context)
+
+    employee.role = await employeeService.createRole(employee, req.context)
+
+    employee.role.key = null
+
+    await offline.queue('employee', 'notify-employee', employee, req.context)
 
     return mapper.toModel(employee, req.context)
 }
@@ -61,7 +70,7 @@ exports.get = async (req, res) => {
         tenant: req.context.tenant.id
     }).populate('type')
 
-    if (req.params.id !== 'my') {
+    if (employee.role && req.params.id !== 'my') {
         employee.role.key = undefined
     }
 
@@ -230,4 +239,21 @@ exports.bulk = async (req) => {
 exports.delete = async (req) => {
     await employeeService.remove(req.params.id, req.context)
     return 'employee successfully delete'
+}
+
+exports.exists = async (req) => {
+    let query = {
+        organization: req.context.organization
+    }
+    if (req.query.email) {
+        query.email = req.query.email
+    } else if (req.query.phone) {
+        query.phone = req.query.phone
+    } else if (req.query.code) {
+        query.code = req.query.code
+    }
+
+    let employee = await db.employee.findOne(query)
+
+    return !!employee
 }

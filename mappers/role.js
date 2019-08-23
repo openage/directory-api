@@ -92,8 +92,8 @@ exports.toModel = (entity, context) => {
                     isPhoneValidate: element.role.user.isPhoneValidate,
                     isEmailValidate: element.role.user.isEmailValidate
                 } : {
-                    id: element.role.user.toString()
-                }
+                        id: element.role.user.toString()
+                    }
             }
             model.dependents.push(dependent)
         })
@@ -110,6 +110,8 @@ exports.toModel = (entity, context) => {
                 id: entity.employee.id,
                 code: entity.employee.code,
                 type: entity.employee.type,
+                phone: entity.employee.phone,
+                email: entity.employee.email,
                 address: entity.employee.address,
                 status: entity.employee.status,
                 profile: entity.employee.profile
@@ -129,8 +131,8 @@ exports.toModel = (entity, context) => {
                 code: entity.employee.designation.code,
                 level: entity.employee.designation.level
             } : {
-                id: entity.employee.designation.toString()
-            }
+                    id: entity.employee.designation.toString()
+                }
         }
 
         if (entity.employee.division) {
@@ -139,8 +141,8 @@ exports.toModel = (entity, context) => {
                 name: entity.employee.division.name,
                 code: entity.employee.division.code
             } : {
-                id: entity.employee.division.toString()
-            }
+                    id: entity.employee.division.toString()
+                }
         }
     }
 
@@ -157,11 +159,12 @@ exports.toModel = (entity, context) => {
             about: entity.organization.about,
             address: entity.organization.address,
             status: entity.organization.status,
-            meta: entity.organization.meta
+            meta: entity.organization.meta,
+            isProfileCompleted: entity.organization.isProfileCompleted
             // owner: entity.organization.owner
         } : {
-            id: entity.organization.toString()
-        }
+                id: entity.organization.toString()
+            }
     }
 
     if (entity.tenant) {

@@ -1,6 +1,8 @@
 /* eslint-disable indent */
 'use strict'
 
+const Guid = require('guid')
+
 const userService = require('./users')
 const divisionService = require('./divisions')
 const designationService = require('./designations')
@@ -10,6 +12,7 @@ const userGetter = require('./user-getter')
 const profileService = require('./profiles')
 const addressService = require('./addresses')
 
+const roleService = require('./roles')
 const roleGetter = require('./role-getter')
 const roleTypeService = require('./role-types')
 
@@ -83,6 +86,7 @@ exports.create = async (data, context) => {
             data.user = await userService.create({
                 phone: data.phone,
                 email: data.email,
+                password: data.password,
                 profile: await profileService.get(data, null, context),
                 address: await addressService.get(data, null, context)
             }, context)
@@ -329,6 +333,27 @@ const remove = async (id, context) => {
     }, employee, context)
 }
 
+const createRole = async (employee, context) => {
+
+    let code = roleService.uniqueCodeGenerator(employee.user, context)
+
+    let organizationType = employee.organization.type || 'organization'
+    let userType = employee.type || 'employee'
+    let type = `${organizationType}.${userType}`
+
+    let roleType = await roleTypeService.get(type, context)
+
+    return new db.role({
+        key: Guid.create().value,
+        code: code,
+        user: employee.user,
+        type: roleType,
+        employee: employee,
+        organization: employee.organization,
+        tenant: context.tenant
+    }).save()
+}
+
 exports.update = update
 exports.get = get
 exports.getByCode = getByCode
@@ -336,3 +361,4 @@ exports.getById = getById
 exports.search = search
 exports.setSupervisor = setSupervisor
 exports.remove = remove
+exports.createRole = createRole

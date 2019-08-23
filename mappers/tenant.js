@@ -55,14 +55,15 @@ exports.toModel = (entity, context) => {
         id: entity.id,
         code: entity.code,
         name: entity.name,
+        host: entity.host,
         key: entity.key
     }
 
-    if (entity.owner && entity.owner.user) {
-        model.owner = {
-            id: entity.owner.user.id
-        }
-    }
+    // if (entity.owner && entity.owner.user) {
+    //     model.owner = {
+    //         id: entity.owner.user.id
+    //     }
+    // }
 
     if (entity.logo) {
         model.logo = {
@@ -71,6 +72,29 @@ exports.toModel = (entity, context) => {
         }
     }
 
+    if (entity.navs && entity.navs.length) {
+        model.navs = entity.navs.map(n => {
+            var item = {
+                title: n.title,
+                icon: n.icon,
+                items: []
+            }
+
+            if (n.items && n.items.length) {
+                item.items = n.items.map(l => {
+                    return {
+                        name: l.name,
+                        url: l.url,
+                        icon: l.icon,
+                        title: l.title,
+                        routerLink: l.routerLink,
+                        permissions: l.permissions
+                    }
+                })
+            }
+            return item
+        })
+    }
     model.services = extractServices(entity)
 
     return model

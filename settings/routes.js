@@ -85,6 +85,11 @@ module.exports.configure = (app, logger) => {
             permissions: 'tenant.user'
         }, {
             action: 'POST',
+            method: 'changePassword',
+            url: '/changePassword',
+            permissions: 'tenant.user'
+        }, {
+            action: 'POST',
             method: 'resendOtp',
             url: '/resend',
             permissions: ['tenant.guest', 'tenant.user']
@@ -173,11 +178,16 @@ module.exports.configure = (app, logger) => {
             action: 'POST',
             method: 'codeAvailable',
             url: '/isAvailable',
-            permissions: 'tenant.user'
+            permissions: ['tenant.user', 'tenant.guest']
         }])
 
     api.model('employees')
         .register([{
+            action: 'GET',
+            method: 'exists',
+            url: '/exists',
+            permissions: ['tenant.guest', 'tenant.user']
+        }, {
             action: 'POST',
             method: 'create',
             permissions: 'tenant.user'
@@ -211,6 +221,11 @@ module.exports.configure = (app, logger) => {
         root: 'roleTypes',
         controller: 'role-types'
     }).register('REST', { permissions: 'tenant.user' })
+
+    api.model({
+        root: 'integrations',
+        controller: 'integrations'
+    }).register('REST', { permissions: 'system.manage' })
 
     api.model('departments')
         .register([{

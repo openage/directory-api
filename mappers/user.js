@@ -179,8 +179,8 @@ exports.toModel = (entity, context) => {
                             picUrl: element.role.user.picUrl,
                             isProfileComplete: element.role.user.isProfileComplete
                         } : {
-                            id: element.role.user.toString()
-                        }
+                                id: element.role.user.toString()
+                            }
                     }
                     role.dependents.push(dependent)
                 })
@@ -193,6 +193,9 @@ exports.toModel = (entity, context) => {
                     code: item.organization.code,
                     shortName: item.organization.shortName,
                     type: item.organization.type,
+                    logo: item.organization.logo,
+                    meta: item.organization.meta,
+                    isProfileCompleted: item.organization.isProfileCompleted,
                     address: {},
                     services: []
                 }
@@ -222,6 +225,8 @@ exports.toModel = (entity, context) => {
                     id: item.employee.id,
                     code: item.employee.code,
                     type: item.employee.type,
+                    phone: item.employee.phone,
+                    email: item.employee.email,
                     profile: role.profile
                 }
 
@@ -230,8 +235,8 @@ exports.toModel = (entity, context) => {
                         id: item.employee.designation.id,
                         name: item.employee.designation.name
                     } : {
-                        id: item.employee.designation.toString()
-                    }
+                            id: item.employee.designation.toString()
+                        }
                 }
 
                 if (item.employee.department) {
@@ -239,8 +244,8 @@ exports.toModel = (entity, context) => {
                         id: item.employee.department.id,
                         name: item.employee.department.name
                     } : {
-                        id: item.employee.department.toString()
-                    }
+                            id: item.employee.department.toString()
+                        }
                 }
 
                 if (item.employee.division) {
@@ -250,8 +255,8 @@ exports.toModel = (entity, context) => {
                         code: item.employee.division.code,
                         status: item.employee.division.status
                     } : {
-                        id: item.employee.division.toString()
-                    }
+                            id: item.employee.division.toString()
+                        }
                 }
 
                 role.employee = employee
