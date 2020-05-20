@@ -1,46 +1,36 @@
 module.exports = [{
     url: '/',
-    post: { parameters: ['x-role-key'] },
     get: {
-        parameters: ['x-role-key',
-            {
-                'name': 'type',
-                'in': 'query',
-                'description': 'set organization type',
-                'required': false,
-                'type': 'string'
-            }]
+        permissions: ['tenant.user']
+    },
+    post: {
+        permissions: ['tenant.guest', 'tenant.user']
     }
 }, {
-    url: '/{id}',
-    put: { parameters: ['x-role-key'] },
+    url: '/:code/summary',
     get: {
-        parameters: ['x-role-key']
+        method: 'get',
+        id: 'get-by-code',
+        summary: 'summary by code',
+        permissions: ['tenant.guest', 'tenant.user']
     }
-
 }, {
     url: '/isAvailable',
     post: {
-        description: 'check organization code is available',
-        parameters: [
-            'x-role-key',
-            {
-                name: 'body',
-                in: 'body',
-                description: 'organization code',
-                required: true,
-                schema: {
-                    $ref: '#/definitions/isAvailableReq'
-                }
-            }
-        ],
-        responses: {
-            default: {
-                description: 'Unexpected error',
-                schema: {
-                    $ref: '#/definitions/isAvailableRes'
-                }
-            }
-        }
+        method: 'codeAvailable',
+        id: 'exists',
+        summary: 'exists',
+        permissions: ['tenant.user', 'tenant.guest']
+    }
+}, {
+    url: '/:id',
+    put: {
+        permissions: ['organization.admin', 'tenant.admin']
+    },
+    delete: {
+        permissions: ['organization.admin', 'tenant.admin']
+    },
+    get: {
+        permissions: ['organization.user', 'tenant.admin']
     }
 }]

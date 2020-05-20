@@ -1,60 +1,19 @@
 'use strict'
 
-const roleMapper = require('./role')
+const imageMapper = require('./image')
+const navMapper = require('./nav')
+const serviceMapper = require('./service')
 
-const serviceProvider = require('config').get('providers')
-
-const extractServices = (organization) => {
-    const serviceMapper = (service, level1, level2) => {
-        level1 = level1 || {}
-        level2 = level2 || {}
-        const apps = service.apps || level1.apps || level2.apps || {}
-
-        const serviceHooks = service.hooks || {}
-        const level1Hooks = level1.hooks || {}
-        const level2Hooks = level2.hooks || {}
-
-        const mapHook = (name) => {
-            const hook = serviceHooks[name] || level1Hooks[name] || level2Hooks[name] || {}
-
-            if (!hook) { return null }
-            return {
-                onUpdate: hook.onUpdate,
-                onCreate: hook.onCreate,
-                onDelete: hook.onDelete
-            }
-        }
-
-        return {
-            code: service.code,
-            logo: service.logo || level1.logo || level2.logo,
-            name: service.name || level1.name || level2.name,
-            url: service.url || level1.url || level2.url,
-            apps: {
-                web: apps.web,
-                android: apps.android,
-                iOS: apps.iOS
-            },
-            hooks: {
-                organization: mapHook('organization'),
-                employee: mapHook('employee'),
-                student: mapHook('student')
-            }
-        }
-    }
-
-    const services = []
-    if (organization.services && organization.services.length) {
-        organization.services.forEach(service => {
-            let configLevel = serviceProvider[service.code]
-            if (!configLevel) { return }
-            services.push(serviceMapper(service, configLevel))
-        })
-    }
-
-    return services
-}
 exports.toModel = (entity, context) => {
+    if (!entity) {
+        return null
+    }
+    if (entity._bsontype === 'ObjectID') {
+        return {
+            id: entity.toString()
+        }
+    }
+
     let model = {
         id: entity.id || entity._id.toString(),
         name: entity.name,
@@ -67,48 +26,69 @@ exports.toModel = (entity, context) => {
         location: entity.location,
         address: entity.address,
         meta: entity.meta,
-        logo: entity.logo,
-        services: [],
-        status: entity.status,
-        isProfileCompleted: entity.isProfileCompleted,
-        lastEmployeeCode: entity.lastEmployeeCode || null,
-        lastDivisionCode: entity.lastDivisionCode || null,
-        lastDepartmentCode: entity.lastDepartmentCode || null,
-        lastDesignationCode: entity.lastDesignationCode || null,
-        lastContractorCode: entity.lastContractorCode || null
+        styles: entity.styles,
+        logo: imageMapper.toModel(entity.logo, context),
+        services: (entity.services || []).map(s => {
+            return {
+                code: s.code,
+                name: s.name,
+                url: s.url
+            }
+        }),
+        navs: navMapper.toModel(entity.navs, context),
+        status: entity.status
     }
 
-    if (entity.logo) {
-        model.logo = {
-            url: entity.logo.url,
-            thumbnail: entity.logo.thumbnail
+    model.social = (entity.social || []).map(s => {
+        return {
+            model: {
+                code: s.model ? s.model.code : ''
+            },
+            config: s.config
         }
-    }
+    })
 
-    model.services = extractServices(entity)
+    // if (entity.owner) {
+    //     model.owner = entity.owner._doc ? roleMapper.toModel(entity.owner, context) : {
+    //         id: entity.owner.toString()
+    //     }
+    // }
 
-    if (entity.owner) {
-        model.owner = entity.owner._doc ? roleMapper.toModel(entity.owner, context) : {
-            id: entity.owner.toString()
-        }
-    }
+    // if (entity.role) {
+    //     model.role = entity.role._doc ? roleMapper.toModel(entity.role, context) : {
+    //         id: entity.role.toString()
+    //     }
+    // }
 
-    if (entity.role) {
-        model.role = entity.role._doc ? roleMapper.toModel(entity.role, context) : {
-            id: entity.role.toString()
-        }
+    if (context.user && entity.owner && entity.owner.id === context.role.id) {
+        model.isProfileCompleted = entity.isProfileCompleted
+        model.lastEmployeeCode = entity.lastEmployeeCode || null
+        model.lastDivisionCode = entity.lastDivisionCode || null
+        model.lastDepartmentCode = entity.lastDepartmentCode || null
+        model.lastDesignationCode = entity.lastDesignationCode || null
+        model.lastContractorCode = entity.lastContractorCode || null
+        model.key = entity.key
+        model.config = entity.config
     }
 
     return model
 }
 
-exports.toSummary = entity => {
+exports.toSummary = (entity, context) => {
+    if (!entity) {
+        return null
+    }
+    if (entity._bsontype === 'ObjectID') {
+        return {
+            id: entity.toString()
+        }
+    }
     return {
         id: entity.id,
         code: entity.code,
         name: entity.name,
         type: entity.type,
-        logo: entity.logo,
+        logo: imageMapper.toModel(entity.logo, context),
         status: entity.status,
         isProfileCompleted: entity.isProfileCompleted
     }

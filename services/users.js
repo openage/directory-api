@@ -44,7 +44,7 @@ const set = async (model, entity, context) => {
         }
 
         if (await userGetter.getByPhone(model.phone, context)) {
-            throw new Error(`${model.email} is taken`)
+            throw new Error(`${model.phone} is taken`)
         }
         entity.newPhone = model.phone
         if (!entity.phone) {
@@ -53,6 +53,7 @@ const set = async (model, entity, context) => {
     }
 
     if (model.facebookId) { entity.facebookId = model.facebookId }
+    if (model.googleId) { entity.googleId = model.googleId }
     if (model.code && entity.code !== model.code) {
         const existingUser = await userGetter.getByCode(model.code, context)
         if (existingUser) {
@@ -78,6 +79,22 @@ const set = async (model, entity, context) => {
         }
     }
 
+    if (model.isEmailValidate !== undefined) {
+        entity.isEmailValidate = model.isEmailValidate
+    }
+
+    if (model.isPhoneValidate !== undefined) {
+        entity.isPhoneValidate = model.isPhoneValidate
+    }
+
+    if (model.meta) {
+        entity.meta = model.meta
+    }
+
+    if (model.status) {
+        entity.status = model.status
+    }
+
     entity.isProfileComplete = isProfileComplete(entity)
 
     return entity
@@ -96,14 +113,25 @@ const create = async (model, context) => {
         throw new Error(`USER_ALREADY_EXIST`)
     }
 
+    log.silly('creating new user')
+
     user = new db.user({
         tenant: context.tenant
     })
     await set(model, user, context)
     await user.save()
+
+    log.silly(`new user ${user.id} created`)
     await offline.queue('user', 'create', user, context)
 
     // if (!context.user) { // this is signup
+
+    // }
+
+    log.silly(`creating user level role`)
+    const defaultRole = await roles.create({ user: user, status: 'active' }, context)
+    user.roles = [defaultRole]
+
     let session = await sessions.initiate({
         purpose: 'signup',
         device: model.device,
@@ -114,10 +142,6 @@ const create = async (model, context) => {
     user.otp = session.otp // TODO: obsolete
     await user.save() // TODO: obsolete
     user.session = session
-    // }
-
-    const defaultRole = await roles.create({ user: user, status: 'active' }, context)
-    user.roles = [defaultRole]
 
     log.end()
     return user
@@ -158,18 +182,19 @@ const isProfileComplete = (model) => {
 const getOrCreate = async (model, context) => {
     let log = context.logger.start('services:users:getOrCreate')
     let user = await userGetter.get(model, context)
-
     if (!user) {
         user = await create(model, context)
     }
-
     // let roleCode = model.isTemporary ? shortid.generate() : null
     let role = await roleGetter.get({
         user: user
     }, context)
-
     if (!role) {
         role = await roles.create({ user: user, status: 'active' }, context)
+    }
+    if (role) {
+        role.organization = context.organization
+        user.roles = [role]
     }
 
     // context.role = role
@@ -207,6 +232,10 @@ exports.update = async (id, model, context) => {
     }
 
     let entity = await userGetter.get(id, context)
+
+    if (!entity && context.user) {
+        entity = context.user
+    }
 
     if (!entity.isEmailValidate && !entity.isPhoneValidate && entity.isTemporary) {
         return 'user is not verified or temporary'
@@ -247,14 +276,14 @@ exports.verifyOTP = async (model, context) => {
     let entity = await userGetter.get(model, context)
 
     if (!entity) {
-        throw new Error('USER_INVALID')
+        throw new Error('USER_DOES_NOT_EXISTS')
     }
 
     if (entity.status !== 'active') {
         throw new Error('USER_BLOCKED')
     }
 
-    if (!model.otp && !entity.otp && entity.otp !== Number(model.otp) && model.otp !== activationConfig.otp) {
+    if (!model.otp || !entity.otp || !(entity.otp === Number(model.otp) || model.otp === activationConfig.otp)) {
         throw new Error('OTP_INVALID')
     }
 
@@ -297,7 +326,7 @@ exports.verifyPassword = async (model, context) => {
     let entity = await userGetter.get(model, context)
 
     if (!entity) {
-        throw new Error('USER_INVALID')
+        throw new Error('USER_DOES_NOT_EXISTS')
     }
 
     if (entity.status !== 'active') {
@@ -328,6 +357,63 @@ exports.verifyPassword = async (model, context) => {
         app: model.app,
         user: entity
     }, context)
+
+    return entity
+}
+
+exports.login = async (model, context) => {
+    context.logger.silly('verifyPassword')
+
+    let entity = await userGetter.get(model, context)
+
+    if (!entity) {
+        throw new Error('USER_DOES_NOT_EXISTS')
+    }
+
+    if (entity.status !== 'active') {
+        throw new Error('USER_BLOCKED')
+    }
+
+    entity.roles = await roles.search({
+        user: entity
+    }, null, context)
+
+    context.setUser(entity)
+
+    entity.session = await sessions.create({
+        purpose: 'login',
+        device: model.device,
+        app: model.app,
+        user: entity
+    }, context)
+
+    return entity
+}
+
+exports.signOut = async (id, context) => {
+    context.logger.silly('signOut')
+
+    let entity = await userGetter.get(id, context)
+
+    if (!entity) {
+        throw new Error('USER_DOES_NOT_EXISTS')
+    }
+
+    let userSessions = await sessions.searchByUser(entity, context)
+
+    if (!userSessions || !userSessions.length) {
+        throw new Error('NO_ACTIVE_SESSIONS')
+    }
+
+    for (const session of userSessions) {
+        await sessions.update(session.id, {
+            status: 'expired'
+        }, context)
+    }
+
+    entity.otp = null
+
+    await entity.save()
 
     return entity
 }

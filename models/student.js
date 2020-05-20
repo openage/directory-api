@@ -12,16 +12,14 @@ module.exports = {
     dol: Date,
     reason: String,
     batch: {
-        id: String,
-        code: String,
-        name: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'batch'
     },
     course: {
-        id: String,
-        code: String,
-        name: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'course'
     },
-    college: {
+    institute: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'division'
     },
@@ -70,6 +68,7 @@ module.exports = {
         pinCode: String,
         country: String
     },
+    aadhar: Number,
     meta: Object,
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -78,7 +77,10 @@ module.exports = {
     },
     organization: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'organization',
-        required: [true, 'organization required!']
+        ref: 'organization'
+    },
+    tenant: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'tenant'
     }
 }

@@ -1,16 +1,42 @@
 'use strict'
 
+const courses = require('./course')
+
 exports.toModel = (entity, context) => {
+    if (!entity) {
+        return null
+    }
+
+    if (entity._bsontype === 'ObjectID') {
+        return {
+            id: entity.toString()
+        }
+    }
     return {
         id: entity.id,
         name: entity.name,
         code: entity.code,
         status: entity.status,
         address: entity.address,
-        organization: {
-            id: entity.organization.id
-        },
-        timeZone: entity.timeZone
+        timeZone: entity.timeZone,
+        courses: (entity.courses && entity.courses.length) ? courses.toSearchModel(entity.courses) : []
+    }
+}
+
+exports.toSummary = (entity, context) => {
+    if (!entity) {
+        return null
+    }
+    if (entity._bsontype === 'ObjectID') {
+        return {
+            id: entity.toString()
+        }
+    }
+    return {
+        id: entity.id,
+        code: entity.code,
+        name: entity.name,
+        courses: (entity.courses && entity.courses.length) ? courses.toSearchModel(entity.courses) : []
     }
 }
 

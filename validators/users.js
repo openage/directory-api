@@ -9,8 +9,15 @@ exports.canCreate = async (req) => {
 }
 
 exports.canVerifyOtp = async (req) => {
-    if (!req.body.phone && !req.body.email && !req.body.id) {
-        return 'phone or email required'
+    if (!(
+        req.body.phone ||
+        req.body.email ||
+        req.body.id ||
+        req.body.code ||
+        (req.body.student && req.body.student.code) ||
+        (req.body.employee && req.body.employee.code)
+    )) {
+        return 'one of following are required phone, email, code or id'
     }
 
     if (!req.body.otp) {
@@ -22,9 +29,17 @@ exports.canResetPassword = async (req) => {
     if (!req.body.password) { return 'password required' }
 }
 
+exports.canUpdate = async (req) => {
+    if (!(req.params.id == 'my' || req.params.id == req.context.user.email || req.params.id == req.context.user.code || req.params.id == req.context.user.phone || req.context.hasPermission('system.manage'))) { return 'password required' }
+}
+
+exports.canSignOut = async (req) => {
+    if (!(req.params.id == 'my' || req.params.id == req.context.user.email || req.params.id == req.context.user.code || req.params.id == req.context.user.phone || req.context.hasPermission('system.manage'))) { return 'permission required' }
+}
+
 exports.canResendOtp = async (req) => {
-    if (!req.body.phone && !req.body.email && req.body.id) {
-        return 'phone or email or id is required'
+    if (!req.body.phone && !req.body.email && !req.body.id && !req.body.code) {
+        return 'phone or email or id or code is required'
     }
     let existUser = await users.get(req.body, req.context)
     if (existUser) { req.context.user = existUser } else {
@@ -33,12 +48,18 @@ exports.canResendOtp = async (req) => {
 }
 
 exports.canSignIn = async (req) => {
-    let payload = req.body
-    if (!payload.phone && !payload.email && !payload.code && !payload.employee && !payload.employee.code) {
-        return 'phone, email or code required'
+    if (!(
+        req.body.phone ||
+        req.body.email ||
+        req.body.id ||
+        req.body.code ||
+        (req.body.student && req.body.student.code) ||
+        (req.body.employee && req.body.employee.code)
+    )) {
+        return 'one of following are required phone, email, code or id'
     }
 
-    if (!payload.password) {
+    if (!req.body.password) {
         return 'password required'
     }
 }

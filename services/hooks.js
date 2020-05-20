@@ -25,7 +25,7 @@ exports.employeeCreate = async (id, context) => {
         return Promise.resolve(null)
     }
 
-    let employee = await employees.getById(role.employee.id)
+    let employee = await employees.get(role.employee, context)
 
     let empRole = {
         id: role.id,
@@ -66,7 +66,7 @@ exports.employeeCreate = async (id, context) => {
 exports.employeeUpdate = async (id, context) => {
     let log = logger.start(`employeeUpdate: ${id}`)
 
-    let employee = await employees.getById(id)
+    let employee = await employees.get(id, context)
 
     let role = await roles.get({ employee: id }, context)
 

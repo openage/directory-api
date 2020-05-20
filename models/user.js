@@ -5,6 +5,7 @@ const mongoose = require('mongoose')
 module.exports = {
     phone: String,
     newPhone: String,
+
     isPhoneValidate: {
         type: Boolean,
         default: false
@@ -13,37 +14,42 @@ module.exports = {
         type: String,
         lowercase: true
     },
+
     newEmail: String,
     isEmailValidate: {
         type: Boolean,
         default: false
     },
-    facebookId: String,
 
+    facebookId: String,
+    googleId: String,
     lastSeen: Date,
 
     code: String, // userName
     previousCode: String,
+
     isCodeUpdated: {
         type: Boolean,
         default: false
     },
-
     otp: Number,
+
     password: String,
     profile: {
         firstName: {
-            type: String,
-            lowercase: true
+            type: String
+        },
+        fatherName: {
+            type: String
         },
         lastName: {
-            type: String,
-            lowercase: true
+            type: String
         },
         dob: {
             type: Date,
             default: null
         },
+        age: Number,
         bloodGroup: String,
         pic: {
             url: String,
@@ -55,6 +61,7 @@ module.exports = {
             default: 'none'
         }
     },
+
     location: {
         coordinates: {
             type: [Number], // [<longitude>, <latitude>]
@@ -70,8 +77,11 @@ module.exports = {
         city: String,
         state: String,
         pinCode: String,
-        country: String
+        country: String,
+        lat: Number,
+        long: Number
     },
+
     identities: { // hash these fields
         aadhaar: {
             type: String
@@ -88,6 +98,7 @@ module.exports = {
         default: 'active',
         enum: ['active', 'inactive', 'blocked']
     },
+
     isProfileComplete: {
         type: Boolean,
         default: false
@@ -96,6 +107,8 @@ module.exports = {
         type: Boolean,
         default: false
     },
+
+    meta: Object,
 
     tenant: {
         type: mongoose.Schema.Types.ObjectId,

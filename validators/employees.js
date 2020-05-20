@@ -6,12 +6,13 @@ const fileUpload = require('../helpers/fileUpload')
 exports.canCreate = async (req) => {
     // if (!req.body.phone && !req.body.email) { return 'phone or email is required' }
 
-    if (!req.body.type) {
-        return 'employee type required'
-    }
+    // system will compute type if not supplied
+    // if (!req.body.type) {
+    //     return 'employee type required'
+    // }
 
     if (req.body.code) {
-        let sameCodeEmp = await employees.getByCode(req.body.code, req.context)
+        let sameCodeEmp = await employees.get(req.body.code, req.context)
 
         if (sameCodeEmp) {
             return `employee with code '${req.body.code}' exists`

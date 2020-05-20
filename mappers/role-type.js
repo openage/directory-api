@@ -1,23 +1,21 @@
 'use strict'
 
 exports.toModel = (entity, context) => {
-    let model = {
-        id: entity.id,
-        name: entity.name,
-        description: entity.description,
-        code: entity.code,
-        permissions: entity.permissions
+    if (!entity) {
+        return
     }
 
-    if (entity.tenant) {
-        model.tenant = entity.tenant._doc ? {
-            id: entity.tenant.id
-        } : {
-            id: entity.tenant.toString()
+    if (entity._bsontype === 'ObjectID') {
+        return {
+            id: entity.toString()
         }
     }
-
-    return model
+    return {
+        id: entity.id,
+        code: entity.code,
+        name: entity.name,
+        permissions: entity.permissions
+    }
 }
 
 exports.toSearchModel = (entities, context) => {

@@ -12,8 +12,116 @@ const roleGetter = require('./role-getter')
 
 const db = require('../models')
 
+const set = async (model, entity, context) => {
+    if (model.name) {
+        entity.name = model.name
+    }
+    if (model.code && (model.code !== entity.code)) {
+        if (entity.previousCode) {
+            throw new Error('CODE_ALREADY_UPDATED')
+        }
+        let existing = await db.organization.findOne({
+            code: model.code.toLowerCase(),
+            tenant: context.tenant
+        })
+        if (existing) {
+            throw new Error('CODE_ALREADY_EXISTS')
+        }
+        entity.previousCode = entity.code
+        entity.isCodeUpdated = true
+        entity.code = model.code
+    }
+    if (model.shortName) {
+        entity.shortName = model.shortName
+    }
+    if (model.type) {
+        entity.type = model.type
+    }
+
+    if (model.phone) {
+        entity.phone = model.phone
+    }
+
+    if (model.email) {
+        entity.email = model.email
+    }
+
+    if (model.about) {
+        entity.about = model.about
+    }
+
+    if (model.logo) {
+        entity.logo = {
+            url: model.logo.url,
+            thumbnail: model.logo.thumbnail
+        }
+    }
+
+    if (model.config) {
+        entity.config = model.config
+    }
+    if (model.navs) {
+        entity.navs = []
+
+        for (const nav of model.navs) {
+            entity.navs.push(nav)
+        }
+    }
+
+    if (model.meta) {
+        entity.meta = model.meta
+    }
+
+    if (model.isProfileCompleted) {
+        entity.isProfileCompleted = model.isProfileCompleted
+    }
+
+    if (model.location) {
+        entity.location = await locationService.get(model, entity.location, context)
+    }
+    if (model.address) {
+        entity.address = await addressService.get(model, entity.address, context)
+    }
+    if (model.status && entity.status !== model.status) {
+        entity.status = model.status
+    }
+
+    if (model.owner) {
+        entity.owner = await roleGetter.get(model.owner, context)
+    }
+
+    if (model.styles != undefined) {
+        entity.styles = model.styles
+    }
+
+    if (model.social) {
+        entity.social = []
+
+        for (const social of model.social) {
+            entity.social.push({
+                model: {
+                    code: social.model ? social.model.code : 'default'
+                },
+                config: social.config
+            })
+        }
+    }
+
+    if (model.services && model.services.length) {
+        entity.services = model.services.map(s => {
+            return {
+                code: s.code,
+                name: s.name,
+                url: s.url
+            }
+        })
+    }
+
+    return entity
+}
+
 exports.create = async (data, context) => {
-    let log = context.logger.start('orngainzations:create')
+    let log = context.logger.start('services/organizations:create')
 
     let existing = await exports.get(data.code, context)
     if (existing) {
@@ -99,87 +207,10 @@ const getByIdOrCode = async (identifier, context) => {
     return db.organization.findOne(query).populate('owner')
 }
 
-const set = async (model, organization, context) => {
-    let log = context.logger.start('services/organizations:update')
-    if (model.name) {
-        organization.name = model.name
-    }
-    if (model.code && (model.code !== organization.code)) {
-        if (organization.previousCode) {
-            throw new Error('CODE_ALREADY_UPDATED')
-        }
-        let existing = await db.organization.findOne({
-            code: model.code.toLowerCase(),
-            tenant: context.tenant
-        })
-        if (existing) {
-            throw new Error('CODE_ALREADY_EXISTS')
-        }
-        organization.previousCode = organization.code
-        organization.isCodeUpdated = true
-        organization.code = model.code
-    }
-    if (model.shortName) {
-        organization.shortName = model.shortName
-    }
-    if (model.type) {
-        organization.type = model.type
-    }
-
-    if (model.phone) {
-        organization.phone = model.phone
-    }
-
-    if (model.email) {
-        organization.email = model.email
-    }
-
-    if (model.about) {
-        organization.about = model.about
-    }
-
-    if (model.logo) {
-        organization.logo = {
-            url: model.logo.url,
-            thumbnail: model.logo.thumbnail
-        }
-    }
-
-    if (model.config) {
-        organization.config = model.config
-    }
-
-    if (model.meta) {
-        organization.meta = model.meta
-    }
-
-    if (model.isProfileCompleted) {
-        organization.isProfileCompleted = model.isProfileCompleted
-    }
-
-    if (model.location) {
-        organization.location = await locationService.get(model, organization.location, context)
-    }
-    if (model.address) {
-        organization.address = await addressService.get(model, organization.address, context)
-    }
-    if (model.status && organization.status !== model.status) {
-        organization.status = model.status
-    }
-
-    if (model.owner) {
-        organization.owner = await roleGetter.get(model.owner, context)
-    }
-
-    log.end()
-
-    return organization
-}
-
 exports.update = async (id, model, context) => {
     let entity
 
-    entity = await getByIdOrCode(id, context)
+    entity = await this.get(id, context)
 
     await set(model, entity, context)
 
@@ -246,7 +277,18 @@ exports.search = async (query, paging, context) => {
         where.type = query.type
     }
 
-    return { items: db.organization.find(where) }
+    const count = await db.organization.find(where).count()
+    let items
+    if (paging) {
+        items = await db.organization.find(where).skip(paging.skip).limit(paging.limit)
+    } else {
+        items = await db.organization.find(where)
+    }
+
+    return {
+        count: count,
+        items: items
+    }
 }
 
 exports.remove = async (id, context) => {

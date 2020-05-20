@@ -1,28 +1,16 @@
-// module.exports = [{
-//     url: '/',
-//     post: {
-//         parameters: ['x-role-key']
-//     }
-// }, {
-//     url: '/bulk',
-//     post: {
-//         parameters: ['x-role-key',
-//             {
-//                 name: 'body',
-//                 in: 'body',
-//                 required: true,
-//                 schema: {
-//                     '$ref': '#/definitions/dependentsBulkModelReq'
-//                 }
-
-//             }],
-//         responses: {
-//             default: {
-//                 description: 'Unexpected error',
-//                 schema: {
-//                     '$ref': '#/definitions/dependentsBulkModelRes'
-//                 }
-//             }
-//         }
-//     }
-// }]
+module.exports = [{
+    url: '/',
+    // get: {
+    //     permissions: ['tenant.user']
+    // },
+    post: {
+        permissions: ['tenant.user']
+    }
+}, {
+    url: '/bulk',
+    post: {
+        id: 'create-bulk',
+        summary: 'bulk create',
+        permissions: ['tenant.user']
+    }
+}]

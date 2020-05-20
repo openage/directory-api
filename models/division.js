@@ -2,8 +2,9 @@
 var mongoose = require('mongoose')
 
 module.exports = {
-    code: {type: String, default: 'default'},
-    name: {type: String, default: 'Default'},
+    code: { type: String, default: 'default' },
+    name: { type: String, default: 'Default' },
+
     incharge: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'employee'
@@ -18,9 +19,13 @@ module.exports = {
         country: String
     },
     timeZone: {
-        name: {type: String, default: 'IST'},
-        offset: {type: Number, default: 5.5}
+        name: { type: String, default: 'IST' },
+        offset: { type: Number, default: 5.5 }
     },
+    courses: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'course'
+    }],
     organization: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'organization'

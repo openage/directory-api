@@ -24,6 +24,7 @@ const init = function () {
                 }
             }
 
+            mappers[name] = mapper
             mappers[changeCase.camelCase(name)] = mapper
         }
     })

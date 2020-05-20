@@ -8,8 +8,9 @@ const profileService = require('./profiles')
 const roleGetter = require('./role-getter')
 const userGetter = require('./user-getter')
 
-const organizationSevice = require('./organizations')
+const organizationService = require('./organizations')
 const employeeService = require('./employees')
+const studentService = require('./students')
 
 const uniqueCodeGenerator = async (user, context) => {
     context.logger.silly('services/roles:uniqueCodeGenerator')
@@ -21,7 +22,7 @@ const uniqueCodeGenerator = async (user, context) => {
     }
 
     const getCodeFromProfile = async () => {
-        let code = profileService.generateCode(user.profile)
+        let code = await profileService.generateCode(user.profile)
         let role = await roleGetter.getByCode(code, context)
 
         if (!role) {
@@ -68,7 +69,7 @@ const set = async (model, entity, context) => {
         //     }
         // }
 
-        entity.permissions = [...new Set(model.permissions)];
+        entity.permissions = [...new Set(model.permissions)]
     }
 
     if (model.dependents && model.dependents.length) {
@@ -96,20 +97,16 @@ exports.create = async (data, context) => {
         user = context.user
     }
 
-    if (data.organization && !context.organization) {
-        context.organization = await organizationSevice.get(data.organization, context)
-
+    if (data.organization) {
+        context.organization = await organizationService.get(data.organization, context)
         if (!context.organization) {
-            context.organization = await organizationSevice.create(data.organization, context)
+            context.organization = await organizationService.create(data.organization, context)
         }
     }
 
     let employee
     if (data.employee) {
-        employee = await db.employee.findOne({
-            user: data.user,
-            organization: context.organization
-        })
+        employee = await employeeService.get({ user: data.user }, context)
 
         if (employee) {
             throw new Error('EMPLOYEE_ALREADY_EXIST')
@@ -117,21 +114,30 @@ exports.create = async (data, context) => {
 
         data.employee.user = user
         employee = await employeeService.create(data.employee, context)
-
         data.code = employee.code
+        data.email = employee.email
+        data.phone = employee.phone
     }
 
     let student
+
     if (data.student) {
-        // TODO: implement
-        // data.student.user = user
-        // student = await studentService.create(data.student, context)
-        // data.code = student.code
+        student = await studentService.get({ user: data.user }, context)
+
+        if (student) {
+            throw new Error('STUDENT_ALREADY_EXIST')
+        }
+
+        data.student.user = user
+        student = await studentService.create(data.student, context)
+        data.code = student.code
+        data.email = student.email
+        data.phone = student.phone
     }
 
     data.permissions = data.permissions || []
     data.key = Guid.create().value
-    data.status = context.organization ? 'new' : 'active' // new role in an orgnization needs to approved
+    data.status = context.organization ? 'new' : 'active' // new role in an organization needs to approved
 
     if (!data.type) {
         if (data.employee) {
@@ -157,13 +163,15 @@ exports.create = async (data, context) => {
         data.code = await uniqueCodeGenerator(data.user, context)
     }
 
-    if (!data.employee && !data.organization && !data.code) {
+    if (!data.organization && !data.code) {
         throw new Error('CODE_INVALID')
     }
 
     let role = await new db.role({
         key: data.key,
         code: data.code,
+        email: data.email,
+        phone: data.phone,
         user: user,
         type: roleType,
         employee: employee,
@@ -179,40 +187,16 @@ exports.create = async (data, context) => {
 
     await offline.queue('role', 'create', role, context)
     log.end()
+
+    if (context.user) {
+        if (user.id === context.user.id) {
+            context.role = role
+        }
+    }
     return role
 }
 
-exports.search = async (query, page, context) => {
-    context.logger.start('services/roles:search')
-    let where = {
-        tenant: context.tenant
-        // organization: context.organization //TODO:
-    }
-
-    if (query.status) {
-        where.status = query.status
-    } else {
-        where.status = { $ne: 'inactive' }
-    }
-
-    if (query.user) {
-        where.user = query.user
-    }
-
-    let roleList = await db.role.find(where).populate('type user organization tenant').populate({
-        path: 'employee',
-        populate: {
-            path: 'designation division'
-        }
-    }).populate({
-        path: 'dependents.role',
-        populate: {
-            path: 'user type'
-        }
-    })
-
-    return roleList
-}
+exports.search = roleGetter.search
 
 exports.update = async (id, model, context) => {
     context.logger.start('services/roles:update')

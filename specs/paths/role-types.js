@@ -1,29 +1,27 @@
 module.exports = [{
     url: '/',
-    post: {
-        'parameters': [{
-            'name': 'body',
-            'in': 'body',
-            'description': 'Role type details',
-            'required': true
-        }, {
-            'name': 'x-role-key',
-            'in': 'header',
-            'description': 'User should be owner of the tenant',
-            'required': true,
-            'type': 'string'
-        }],
-        'responses': {
-            'default': {
-                'description': 'Unexpected error',
-                'schema': {
-                    '$ref': '#/definitions/Error'
-                }
-            }
-        }
+    get: {
+        permissions: ['tenant.user']
     },
-    get: { parameters: ['x-role-key'] }
+    post: {
+        permissions: ['tenant.admin']
+    }
 }, {
-    url: '/{id}',
-    put: { parameters: ['x-role-key'] }
+    url: '/bulk',
+    post: {
+        id: 'create-bulk',
+        summary: 'bulk create',
+        permissions: ['tenant.admin']
+    }
+}, {
+    url: '/:id',
+    put: {
+        permissions: ['tenant.admin']
+    },
+    delete: {
+        permissions: ['tenant.admin']
+    },
+    get: {
+        permissions: ['tenant.user']
+    }
 }]

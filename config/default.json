@@ -4,17 +4,21 @@
         "host": "mongodb://localhost:27017/oa_directory"
     },
     "webServer": {
-        "url": "http://localhost:3001",
+        "url": "https://dev.openage.in/directory",
         "port": 3001
     },
     "queueServer": {
         "disabled": true
     },
     "system": {
-        "name": "Open Age",
-        "emailId": "no_reply@openage.in"
+        "name": "Open Age Support",
+        "email": "support@openage.in"
     },
     "auth": {
+        "provider": "jwt",
+        "tokenPeriod": "1440h"
+    },
+    "activation": {
         "otp": "112233",
         "password": "123456"
     },
@@ -33,13 +37,32 @@
         }
     },
     "tenants": [],
+    "hooks": [],
     "providers": {
-        "send-it": {
-            "url": "http://localhost:3002/api"
-        },
         "jwt": {
             "secret": "placeholder",
             "tokenPeriod": "1440h"
+        },
+        "send-it": {
+            "url": "https://dev.openage.in/sendIt/api",
+            "code": "send-it",
+            "name": "SendIt"
+
+        },
+        "vms": {
+            "url": "https://dev.openage.in/sendIt/api",
+            "code": "vms",
+            "name": "Vms"
+        },
+        "ams": {
+            "url": "https://dev.openage.in/ams/api",
+            "code": "ams",
+            "name": "Ams"
+        },
+        "bap": {
+            "url": "https://dev.openage.in/bap/api",
+	    "code": "bap",
+	    "name": "Billing & Payment"
         }
     }
 }

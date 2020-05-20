@@ -1,101 +1,88 @@
 'use strict'
-const serviceProvider = require('config').get('providers')
 
-const extractServices = (tenant) => {
-    const serviceMapper = (service, level1, level2) => {
-        level1 = level1 || {}
-        level2 = level2 || {}
-        const apps = service.apps || level1.apps || level2.apps || {}
+const navMapper = require('./nav')
+const serviceMapper = require('./service')
+const imageMapper = require('./image')
 
-        const serviceHooks = service.hooks || {}
-        const level1Hooks = level1.hooks || {}
-        const level2Hooks = level2.hooks || {}
-
-        const mapHook = (name) => {
-            const hook = serviceHooks[name] || level1Hooks[name] || level2Hooks[name] || {}
-
-            if (!hook) { return null }
-            return {
-                onUpdate: hook.onUpdate,
-                onCreate: hook.onCreate,
-                onDelete: hook.onDelete
-            }
-        }
-
-        return {
-            code: service.code,
-            logo: service.logo || level1.logo || level2.logo,
-            name: service.name || level1.name || level2.name,
-            url: service.url || level1.url || level2.url,
-            apps: {
-                web: apps.web,
-                android: apps.android,
-                iOS: apps.iOS
-            },
-            hooks: {
-                organization: mapHook('organization'),
-                employee: mapHook('employee'),
-                student: mapHook('student')
-            }
-        }
-    }
-    const services = []
-    if (tenant.services && tenant.services.length) {
-        tenant.services.forEach(service => {
-            let configLevel = serviceProvider[service.code]
-            if (!configLevel) { return }
-            services.push(serviceMapper(service, configLevel))
-        })
-    }
-
-    return services
-}
 exports.toModel = (entity, context) => {
     let model = {
         id: entity.id,
         code: entity.code,
         name: entity.name,
         host: entity.host,
-        key: entity.key
+        meta: entity.meta,
+        styles: entity.styles,
+        logo: imageMapper.toModel(entity.logo, context),
+        services: (entity.services || []).map(s => {
+            return {
+                code: s.code,
+                name: s.name,
+                url: s.url
+            }
+        }),
+        navs: navMapper.toModel(entity.navs, context),
+        status: entity.status
+
     }
 
-    // if (entity.owner && entity.owner.user) {
-    //     model.owner = {
-    //         id: entity.owner.user.id
-    //     }
-    // }
-
-    if (entity.logo) {
-        model.logo = {
-            url: entity.logo.url,
-            thumbnail: entity.logo.thumbnail
+    model.social = (entity.social || []).map(s => {
+        return {
+            model: {
+                code: s.model ? s.model.code : ''
+            },
+            config: s.config
         }
-    }
+    })
+    model.level = 'tenant'
 
-    if (entity.navs && entity.navs.length) {
-        model.navs = entity.navs.map(n => {
-            var item = {
-                title: n.title,
-                icon: n.icon,
-                items: []
+    if (context.organization) {
+        context.logger.debug(`adding organization: ${context.organization.code} specific sections`)
+
+        if (entity.rebranding) {
+            model.level = 'organization'
+            if (context.organization.logo) {
+                model.logo = imageMapper.toModel(context.organization.logo, context)
             }
 
-            if (n.items && n.items.length) {
-                item.items = n.items.map(l => {
+            if (context.organization.name) {
+                model.name = context.organization.name
+            }
+
+            if (context.organization.styles) {
+                model.styles = context.organization.styles
+            }
+
+            if (context.organization.social && context.organization.social.length) {
+                model.social = context.organization.social.map(s => {
                     return {
-                        name: l.name,
-                        url: l.url,
-                        icon: l.icon,
-                        title: l.title,
-                        routerLink: l.routerLink,
-                        permissions: l.permissions
+                        model: {
+                            code: s.model ? s.model.code : ''
+                        },
+                        config: s.config
                     }
                 })
             }
-            return item
-        })
-    }
-    model.services = extractServices(entity)
+        }
 
+        if (context.organization.navs && context.organization.navs.length) {
+            model.navs = navMapper.toModel(context.organization.navs, context)
+        }
+
+        if (context.organization.services && context.organization.services.length) {
+            model.services = context.organization.services.map(s => {
+                return {
+                    code: s.code,
+                    name: s.name,
+                    url: s.url
+                }
+            })
+        }
+    }
+
+    if (context.user && entity.owner && entity.owner.id === context.role.id) {
+        model.rebranding = !!entity.rebranding
+        model.key = entity.key
+        model.config = entity.config
+    }
     return model
 }

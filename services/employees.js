@@ -1,7 +1,7 @@
 /* eslint-disable indent */
 'use strict'
 
-const Guid = require('guid')
+const guid = require('guid')
 
 const userService = require('./users')
 const divisionService = require('./divisions')
@@ -12,8 +12,6 @@ const userGetter = require('./user-getter')
 const profileService = require('./profiles')
 const addressService = require('./addresses')
 
-const roleService = require('./roles')
-const roleGetter = require('./role-getter')
 const roleTypeService = require('./role-types')
 
 const dates = require('../helpers/dates')
@@ -22,144 +20,23 @@ const db = require('../models')
 
 const offline = require('@open-age/offline-processor')
 
-const getNewCode = async (field, context) => {
-    let lock = await context.lock(`organization:${context.organization.id}:${field}`)
+const populate = 'user department division designation organization'
 
-    let organization = await db.organization.findById(context.organization.id)
-
-    let newCode = (organization[field] || 0) + 1
-
-    organization[field] = newCode
-
-    await organization.save()
-
-    lock.release()
-
-    return '' + newCode
-}
-
-const getNewEmployeeCode = async (options, context) => {
-    return getNewCode('lastEmployeeCode', context)
-}
-
-exports.create = async (data, context) => {
-    const log = context.logger.start('services/emloyees:create')
-
-    if (!context.organization.owner) {
-        data.code = 'default'
-        data.status = 'active'
-        data.type = 'superadmin'
+const set = async (model, entity, context) => {
+    if (model.doj) {
+        entity.doj = model.doj
     }
-
-    if (data.code) {
-        let existingEmployee = await db.employee.findOne({
-            code: data.code,
-            organization: context.organization
-        })
-
-        if (existingEmployee) {
-            throw new Error('CODE_EXISTS')
-        }
-    } else {
-        data.code = await getNewEmployeeCode({}, context)
-    }
-
-    if (!data.email && data.user) {
-        data.email = data.user.email
-    }
-
-    if (!data.phone && data.user) {
-        data.phone = data.user.phone
-    }
-
-    if (!data.email && !data.phone) {
-        data.email = `${data.code}@${context.organization.code}.com`
-    }
-
-    if (!data.user) {
-        data.user = await userGetter.get({
-            phone: data.phone,
-            email: data.email
-        }, context)
-
-        if (!data.user) {
-            data.user = await userService.create({
-                phone: data.phone,
-                email: data.email,
-                password: data.password,
-                profile: await profileService.get(data, null, context),
-                address: await addressService.get(data, null, context)
-            }, context)
-        }
-    }
-
-    const user = await userGetter.get(data.user, context)
-    let employee = await db.employee.findOne({
-        user: data.user,
-        organization: context.organization
-    }).populate('user department division designation organization').populate({
-        path: 'supervisor',
-        populate: {
-            path: 'user department division designation organization'
-        }
-    })
-
-    if (employee) {
-        log.end()
-        return employee
-    }
-
-    let config = {}
-    if (data.config) {
-        config = data.config
-    }
-
-    let model = {
-        code: data.code,
-        phone: data.phone,
-        email: data.email,
-        type: data.type || 'normal',
-        profile: await profileService.get(data, user.profile, context),
-        address: await addressService.get(data, user.address, context),
-        status: data.status || 'new',
-        user: user,
-        config: config,
-        doj: data.doj || new Date(),
-        dol: data.dol,
-        reason: data.reason,
-        supervisor: await get(data.supervisor, context),
-        division: await divisionService.get(data.division, context),
-        designation: await designationService.get(data.designation, context),
-        department: await departmentService.get(data.department, context),
-        organization: context.organization,
-        tenant: context.tenant
-    }
-
-    employee = await new db.employee(model).save()
-    await offline.queue('employee', 'create', employee, context)
-
-    log.end()
-    return employee
-}
-
-const update = async (model, entity, context) => {
-    let log = context.logger.start('services/employees:update')
 
     if (model.reason) {
         entity.reason = model.reason.toLowerCase()
     }
-    if (model.reason && (model.dol && model.dol !== entity.dol)) {
+
+    if (model.dol && model.dol !== entity.dol) {
         entity.dol = model.dol
 
         if (dates.date(entity.dol).isPast()) {
             model.status = 'inactive'
         }
-    }
-    if (model.doj) {
-        entity.doj = model.doj
-    }
-    if (model.config && model.config.biometricId) {
-        model.config.biometricCode = model.config.biometricId
     }
 
     if (model.status && model.status !== entity.status) {
@@ -186,10 +63,22 @@ const update = async (model, entity, context) => {
     }
 
     if (model.profile) {
-        entity.profile = await profileService.get(model, entity.user.profile, context)
+        if (entity.user) {
+            entity.profile = await profileService.get(model, entity.user.profile, context)
+        }
+    }
+
+    if (model.address) {
+        if (entity.user) {
+            entity.address = await addressService.get(model, entity.user.address, context)
+        }
     }
 
     if (model.config) {
+        if (model.config.biometricId) {
+            model.config.biometricCode = model.config.biometricId
+        }
+
         entity.config = entity.config || {}
         Object.keys(model.config).forEach(key => {
             entity.config[key] = model.config[key]
@@ -197,20 +86,12 @@ const update = async (model, entity, context) => {
         entity.markModified('config')
     }
 
-    if (model.address) {
-        entity.address = model.address
-    }
-
-    if (model.status) {
-        entity.status = model.status
-    }
-
     if (model.type) {
         entity.type = model.type
     }
 
     if (model.supervisor) {
-        entity.supervisor = await get(model.supervisor, context)
+        entity.supervisor = await this.get(model.supervisor, context)
     }
 
     if (model.division) {
@@ -227,138 +108,372 @@ const update = async (model, entity, context) => {
 
     if (context.tenant.code === 'aqua') {
         // TODO: this looks wrong
-        entity.user = await userService.update(entity.user.id, {
-            phone: entity.phone,
-            email: entity.email,
-            profile: entity.profile,
-            password: model.password
+        if (entity.user) {
+            entity.user = await userService.update(entity.user.id || {
+                employee: {
+                    code: entity.code
+                }
+            }, {
+                phone: entity.phone,
+                email: entity.email,
+                profile: entity.profile,
+                password: model.password
+            }, context)
+        }
+    }
+}
+
+const getNewCode = async (field, context) => {
+    let lock = await context.lock(`organization:${context.organization.id}:${field}`)
+
+    let organization = await db.organization.findById(context.organization.id)
+
+    let newCode = (organization[field] || 0) + 1
+
+    organization[field] = newCode
+
+    await organization.save()
+
+    lock.release()
+
+    return '' + newCode
+}
+
+const getNewEmployeeCode = async (options, context) => {
+    return getNewCode('lastEmployeeCode', context)
+}
+
+exports.create = async (data, context) => {
+    const log = context.logger.start('services/employees:create')
+
+    if (!context.organization.owner) {
+        data.code = data.code || 'default'
+        data.status = 'active'
+        data.type = 'superadmin'
+    }
+
+    if (data.code) {
+        let existingEmployee = await this.get(data.code, context)
+
+        if (existingEmployee) {
+            throw new Error('CODE_EXISTS')
+        }
+    } else {
+        data.code = await getNewEmployeeCode({}, context)
+    }
+
+    if (!data.email) {
+        if (data.user) {
+            data.email = data.user.email
+        } else {
+            data.email = `${data.code}@${context.organization.code}.com`
+        }
+    }
+
+    if (!data.phone && data.user) {
+        data.phone = data.user.phone
+    }
+
+    let user
+    if (data.user) {
+        user = await userGetter.get(data.user, context)
+    }
+
+    if (!user) {
+        user = await userGetter.get({
+            phone: data.phone,
+            email: data.email
         }, context)
     }
+
+    if (!user) {
+        user = await userService.create({
+            phone: data.phone,
+            email: data.email,
+            password: data.password,
+            profile: await profileService.get(data, null, context),
+            address: await addressService.get(data, null, context)
+        }, context)
+    }
+
+    let entity = await this.get({ user: user }, context)
+
+    if (!entity) {
+        entity = new db.employee({
+            code: data.code,
+            user: user,
+            type: data.type || 'normal',
+            doj: data.doj || new Date(),
+            status: data.status || 'new',
+            organization: context.organization,
+            tenant: context.tenant
+        })
+    }
+
+    await set(data, entity, context)
+    await entity.save()
+
+    let roleType = await roleTypeService.get(`${context.organization.type || 'organization'}.${entity.type || 'employee'}`, context)
+
+    let role = new db.role({
+        key: guid.create().value,
+        code: entity.code,
+        phone: data.phone,
+        email: data.email,
+        user: user,
+        type: roleType,
+        employee: entity,
+        organization: context.organization,
+        tenant: context.tenant
+    })
+    await role.save()
+
+    await offline.queue('employee', 'create', entity, context)
+    entity.role = role
+
+    log.end()
+    return entity
+}
+
+exports.update = async (id, model, context) => {
+    let log = context.logger.start('services/employees:update')
+
+    let entity = await this.get(id, context)
+    await set(model, entity, context)
 
     await entity.save()
 
     await offline.queue('employee', 'update', entity, context)
 
     log.end()
-    return getById(entity.id, context)
+    return entity
 }
 
-const search = (query, context) => {
+exports.search = async (query, paging, context) => {
     context.logger.start('search')
-    query = query || {}
 
-    query.organization = context.organization.id
-
-    return db.employee.find(query).sort({
-        'profile.firstName': 1
-    }).populate('user department division designation organization').populate({
-        path: 'supervisor',
-        populate: {
-            path: 'user department division designation organization'
-        }
-    })
-}
-
-const getById = async (id, context) => {
-    context.logger.debug('service/employees:getById')
-    return db.employee.findById(id).populate('user department division designation').populate({
-        path: 'supervisor',
-        populate: {
-            path: 'user department division designation organization'
-        }
-    }).populate({
-        path: 'organization',
-        populate: {
-            path: 'owner'
-        }
-    })
-}
-
-const getByCode = async (data, context) => {
-    context.logger.debug('service/employees:getByCode')
-    return db.employee.findOne({
-        code: data.code || data,
-        organization: context.organization.id
-    }).populate('user department division designation organization').populate({
-        path: 'supervisor',
-        populate: {
-            path: 'user department division designation organization'
-        }
-    })
-}
-
-const setSupervisor = async (employee, supervisor, context) => {
-    context.logger.start('service/employees:setSupervisor')
-    if (!supervisor) {
-        return null
+    let sorting = ''
+    if (paging && paging.sort) {
+        sorting = paging.sort
     }
 
-    employee.supervisor = supervisor
+    let sort = {}
 
-    return employee.save()
+    switch (sorting) {
+        default:
+            sort['profile.firstName'] = 1
+            break
+    }
+
+    query = query || {}
+
+    let where = {
+        status: 'active',
+        organization: context.organization
+        // tenant: context.tenant
+    }
+
+    if (query.status && query.status !== 'all') {
+        where['status'] = query.status
+    }
+
+    if (query.name) {
+        where.$or = [{
+            'profile.firstName': {
+                '$regex': '^' + query.name,
+                $options: 'i'
+            }
+        }, {
+            'profile.lastName': {
+                '$regex': '^' + query.name,
+                $options: 'i'
+            }
+        }]
+    }
+    if (query.code) {
+        where['code'] = query.code
+    }
+
+    if (query.designation) {
+        where.designation = await designationService.get(query.designation, context)
+    } else if (query.designations) {
+        where.designation = {
+            $in: query.designations.split(',').map(i => i.toObjectId())
+        }
+    }
+
+    if (query.department) {
+        where.department = await departmentService.get(query.department, context)
+    } else if (query.departments) {
+        where.department = {
+            $in: query.departments.split(',').map(i => i.toObjectId())
+        }
+    }
+
+    if (query.division) {
+        where.division = await divisionService.get(query.division, context)
+    } else if (query.divisions) {
+        where.division = {
+            $in: query.divisions.split(',').map(i => i.toObjectId())
+        }
+    }
+
+    if (query.team && context.role.employee) {
+        where.supervisor = context.role.employee
+    }
+
+    if (query.supervisor) {
+        where.supervisor = await this.get(query.supervisor, context)
+    }
+
+    if (query.peers && context.role.employee) {
+        where.supervisor = context.role.employee.supervisor
+    }
+
+    if (query.contractors) {
+        where['config.contractor.name'] = {
+            $in: query.contractors.split(',')
+        }
+    }
+
+    if (query.employeeTypes) {
+        where['config.employmentType'] = {
+            $in: query.employeeTypes.split(',').map(item => item)
+        }
+    }
+
+    if (query.userTypes) {
+        where['type'] = {
+            $in: query.userTypes.split(',').map(item => item)
+        }
+    }
+
+    if (query.biometricId) {
+        where['config.biometricCode'] = {
+            $regex: query.biometricId,
+            $options: 'i'
+        }
+    }
+
+    if (query.type) {
+        where.type = {
+            $in: query.type.split(',').map(item => item.toLowerCase())
+        }
+    }
+
+    if (query.terminationDate) {
+        where.dol = {
+            $gte: dates.date(query.terminationDate).bod(),
+            $lte: dates.date(query.terminationDate).eod()
+        }
+    }
+
+    if (query.terminationReason) {
+        where['reason'] = {
+            $in: query.terminationReason.split(',').map(i => i.toLowerCase())
+        }
+    }
+
+    if (query.timeStamp) {
+        where.timeStamp = {
+            $gte: Date.parse(query.timeStamp)
+        }
+    }
+
+    const count = await db.employee.find(where).count()
+    let items
+    if (paging) {
+        items = await db.employee.find(where).sort(sort).skip(paging.skip).limit(paging.limit)
+            .populate(populate)
+            .populate({
+                path: 'supervisor',
+                populate: {
+                    path: populate
+                }
+            })
+    } else {
+        items = await db.employee.find(where).sort(sort)
+            .populate(populate)
+            .populate({
+                path: 'supervisor',
+                populate: {
+                    path: populate
+                }
+            })
+    }
+
+    return {
+        count: count,
+        items: items
+    }
 }
 
-const get = async (query, context) => {
+exports.get = async (query, context) => {
     context.logger.debug('service/employees:get')
     if (!query) {
         return null
     }
 
-    if (typeof query === 'string') {
-        if (query.isObjectId()) {
-            return getById(query, context)
-        } else {
-            return getByCode(query, context)
+    let where = {
+        tenant: context.tenant
+    }
+
+    if (context.organization) {
+        where.organization = context.organization
+    }
+
+    if (query === 'my' || query.id === 'my' || query.code === 'my') {
+        query = {
+            id: context.employee.id
         }
     }
-    if (query.id) {
-        return getById(query.id, context)
+
+    if (typeof query === 'string') {
+        if (query.isObjectId()) {
+            return db.employee.findById(query)
+                .populate(populate)
+                .populate({
+                    path: 'supervisor',
+                    populate: {
+                        path: populate
+                    }
+                })
+        } else {
+            where.code = query
+        }
+    } else if (query.id) {
+        return db.employee.findById(query.id)
+            .populate(populate)
+            .populate({
+                path: 'supervisor',
+                populate: {
+                    path: populate
+                }
+            })
+    } else if (query.code) {
+        where.code = query.code
+    } else if (query.user) {
+        where.user = query.user
+    } else if (query.email) {
+        where.email = query.email
+    } else if (query.phone) {
+        where.phone = query.phone
     }
 
-    if (query.code) {
-        return getByCode(query.code, context)
-    }
-    return null
+    return db.employee.findOne(where)
+        .populate(populate)
+        .populate({
+            path: 'supervisor',
+            populate: {
+                path: populate
+            }
+        })
 }
 
-const remove = async (id, context) => {
+exports.remove = async (id, context) => {
     context.logger.start('services:employees:remove')
 
-    let employee = await db.employee.findById(id)
-
-    // find role and inactive role
-
-    return update({
+    return this.update(id, {
         status: 'inactive'
-    }, employee, context)
+    }, context)
 }
-
-const createRole = async (employee, context) => {
-
-    let code = roleService.uniqueCodeGenerator(employee.user, context)
-
-    let organizationType = employee.organization.type || 'organization'
-    let userType = employee.type || 'employee'
-    let type = `${organizationType}.${userType}`
-
-    let roleType = await roleTypeService.get(type, context)
-
-    return new db.role({
-        key: Guid.create().value,
-        code: code,
-        user: employee.user,
-        type: roleType,
-        employee: employee,
-        organization: employee.organization,
-        tenant: context.tenant
-    }).save()
-}
-
-exports.update = update
-exports.get = get
-exports.getByCode = getByCode
-exports.getById = getById
-exports.search = search
-exports.setSupervisor = setSupervisor
-exports.remove = remove
-exports.createRole = createRole

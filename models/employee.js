@@ -78,7 +78,10 @@ module.exports = {
     },
     organization: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'organization',
-        required: [true, 'organization required!']
+        ref: 'organization'
+    },
+    tenant: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'tenant'
     }
 }

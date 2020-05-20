@@ -1,115 +1,269 @@
 const db = require('../models')
+const employeeService = require('./employees')
+
+const populateOthers = 'type user organization tenant'
+
+const populateEmployee = {
+    path: 'employee',
+    populate: {
+        path: 'designation division department supervisor'
+    }
+}
+
+const populateStudent = {
+    path: 'student',
+    populate: {
+        path: 'batch course institute'
+    }
+}
+
+const addResponsibilities = async (role) => {
+    if (!role) {
+        return
+    }
+    if (role.employee) {
+        let teamSize = await db.employee.find({
+            supervisor: role.employee,
+            status: 'active'
+        }).count()
+
+        if (teamSize > 0) {
+            role.employee.isSupervisor = true
+        }
+
+        let studentsSize = await db.student.find({
+            mentor: role.employee,
+            status: 'active'
+        }).count()
+
+        if (studentsSize > 0) {
+            role.employee.isMentor = true
+        }
+    }
+
+    return role
+}
+
+const getOne = async (query) => {
+    let role = await db.role.findOne(query)
+        .populate(populateOthers)
+        .populate(populateEmployee)
+        .populate(populateStudent)
+
+    return addResponsibilities(role)
+}
 
 exports.getByKey = async (key, context) => {
     context.logger.silly('getByKey')
 
-    return db.role.findOne({ key: key }).populate('type user organization tenant').populate({
-        path: 'employee',
-        populate: {
-            path: 'designation division department'
-        }
-    })
+    return getOne({ key: key })
 }
 
 exports.getById = async (id, context) => {
     context.logger.start('getById')
 
-    return db.role.findById(id).populate('type user organization tenant').populate({
-        path: 'employee',
-        populate: {
-            path: 'designation division department'
+    let role = await db.role.findById(id)
+        .populate(populateOthers)
+        .populate(populateEmployee)
+        .populate(populateStudent)
+
+    return addResponsibilities(role)
+}
+
+exports.getByCode = async (code, context) => {
+    context.logger.start('getByCode')
+
+    let where = {
+        organization: context.organization,
+        tenant: context.tenant
+    }
+
+    where['$or'] = [{
+        code: code
+    }, {
+        previousCode: code
+    }]
+
+    let role = await getOne(where)
+    if (role) {
+        return role
+    } else {
+        if (context.hasPermission(['system.manage', 'tenant.admin'])) {
+            delete where.organization
+            return getOne(where)
+        } else {
+            return null
         }
+    }
+}
+
+exports.getByUser = async (user, context) => {
+    context.logger.silly('getByUser')
+
+    return getOne({
+        user: user.id,
+        organization: context.organization,
+        tenant: context.tenant
+    })
+}
+
+exports.getByStudent = async (student, context) => {
+    context.logger.silly('getByStudent')
+
+    return getOne({
+        student: student.id,
+        organization: context.organization,
+        tenant: context.tenant
+    })
+}
+
+exports.getByEmployee = async (model, context) => {
+    context.logger.silly('getByEmployee')
+
+    let employee = await employeeService.get(model, context)
+
+    if (!employee) {
+        return
+    }
+
+    let where = {
+        employee: employee.id,
+        tenant: context.tenant
+    }
+    if (context.organization) {
+        where.organization = context.organization
+    }
+
+    return getOne(where)
+}
+
+exports.getDefault = async (user, context) => {
+    return getOne({
+        user: user,
+        organization: { $exists: false },
+        tenant: context.tenant
     })
 }
 
 exports.get = async (query, context) => {
     context.logger.silly('services/roles:get')
-    let where = {
-        organization: context.organization,
-        tenant: context.tenant
-    }
+
     if (typeof query === 'string') {
         if (query === 'my') {
             return exports.getById(context.role.id, context)
         }
 
         if (query.isObjectId()) {
-            return db.role.findById(query)
+            return exports.getById(query, context)
+        } else if (query.isEmail()) {
+            let where = {
+                email: query.toLowerCase(),
+                tenant: context.tenant
+            }
+            if (context.organization) {
+                where.organization = context.organization
+            }
+            let role = await getOne(where)
+            if (!role) {
+                role = await exports.getByEmployee({ email: query.toLowerCase() }, context)
+            }
+            return role
+        } else if (query.isMobile()) {
+            let where = {
+                phone: query,
+                tenant: context.tenant
+            }
+            if (context.organization) {
+                where.organization = context.organization
+            }
+            let role = await getOne(where)
+            if (!role) {
+                role = await exports.getByEmployee({ phone: query }, context)
+            }
+            return role
         }
-        where['code'] = query
-        return db.role.findOne(where)
+        return exports.getByCode(query, context)
     } else if (query.id) {
         if (query.id === 'my') {
             return exports.getById(context.role.id, context)
         }
-
-        return db.role.findById(query.id)
+        return exports.getById(query.id, context)
     } else if (query.code) {
-        where['code'] = query.code
-        return db.role.findOne(where)
+        return exports.getByCode(query.code, context)
     } else if (query.key) {
-        where['key'] = query.key
-        return db.role.findOne(where)
+        return exports.getByKey(query.key, context)
     } else if (query.user && query.user.id) {
-        where['user'] = query.user.id
-        return db.role.findOne(where)
+        return exports.getByUser(query.user, context)
     } else if (query.employee && query.employee.id) {
-        where['employee'] = query.employee.id
-        return db.role.findOne(where)
+        return exports.getByEmployee(query.employee, context)
+    } else if (query.student && query.student.id) {
+        return exports.getByStudent(query.student, context)
     }
     return null
 }
 
-// exports.get = async (query, context) => {
-//     let where = {
-//         organization: context.organization,
-//         tenant: context.tenant
-//     }
-//     // if (query.type) {
-//     //     where.add('type.code', query.type.code || query.type)
-//     // }
-//     if (query.employee) {
-//         where.employee = query.employee.id || query.employee
-//     }
-//     if (query.user) {
-//         where.user = query.user.id || query.user
-//     }
-//     if (query.organization) {
-//         where.organization = query.organization.id || query.organization
-//     }
-//     where.add('code', query.code)
-//     where.add('key', query.key)
-//     where.add('_id', query.id)
+exports.search = async (query, page, context) => {
+    context.logger.start('services/roles:search')
+    let where
+    if (context.organization) {
+        where = {
+            tenant: context.tenant,
+            organization: context.organization // TODO:
+        }
+    } else {
+        where = {
+            tenant: context.tenant
+        }
+    }
 
-//     return db.role.findOne(where.clause).populate('type user organization tenant').populate({
-//         path: 'employee',
-//         populate: {
-//             path: 'designation division department'
-//         }
-//     })
-// }
+    if (query.status) {
+        where.status = query.status
+    } else {
+        where.status = { $ne: 'inactive' }
+    }
 
-exports.getByCode = async (code, context) => {
-    context.logger.start('getByCode')
+    if (query.user) {
+        where.user = query.user
+    }
 
-    return db.role.findOne({
-        $or: [{
-            code: code
-        }, {
-            previousCode: code
-        }]
-    }).populate('type user organization tenant').populate({
+    let roleList = await db.role.find(where).populate('type user organization tenant').populate({
         path: 'employee',
         populate: {
-            path: 'designation division department'
+            path: 'designation department division'
+        }
+    }).populate({
+        path: 'student',
+        populate: {
+            path: 'batch course institute'
+        }
+    }).populate({
+        path: 'dependents.role',
+        populate: {
+            path: 'user type'
         }
     })
-}
 
-exports.getDefault = async (user, context) => {
-    return db.role.findOne({
-        user: user,
-        organization: { $exists: false },
-        tenant: context.tenant
-    }).populate('type user')
+    for (const role of roleList) {
+        if (role.employee) {
+            let teamSize = await db.employee.find({
+                supervisor: role.employee,
+                status: 'active'
+            }).count()
+
+            if (teamSize > 0) {
+                role.employee.isSupervisor = true
+            }
+
+            let studentsSize = await db.student.find({
+                mentor: role.employee,
+                status: 'active'
+            }).count()
+
+            if (studentsSize > 0) {
+                role.employee.isMentor = true
+            }
+        }
+    }
+
+    return roleList
 }

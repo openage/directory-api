@@ -1,7 +1,36 @@
 'use strict'
 
-let logger = require('@open-age/logger')('services/designations')
 const db = require('../models')
+const populate = ''
+
+const set = async (model, entity, context) => {
+    if (model.code && entity.code !== model.code.toLowerCase()) {
+        let exists = await db.designation.findOne({
+            code: model.code.toLowerCase(),
+            organization: context.organization
+        })
+
+        if (exists) {
+            throw new Error(`CODE_EXISTS`)
+        }
+
+        entity.code = model.code
+    }
+
+    if (model.name) {
+        entity.name = model.name
+    }
+
+    if (model.level) {
+        entity.level = model.level
+    }
+
+    if (model.status) {
+        entity.status = model.status
+    }
+
+    return entity
+}
 
 const getNewCode = async (field, context) => {
     let lock = await context.lock(`organization:${context.organization.id}:${field}`)
@@ -22,7 +51,8 @@ const getNewCode = async (field, context) => {
 const getNewDesignationCode = async (options, context) => {
     return getNewCode('lastDesignationCode', context)
 }
-const create = async (model, context) => {
+
+exports.create = async (model, context) => {
     let log = context.logger.start('services/designations:create')
 
     if (!model.name) {
@@ -34,71 +64,68 @@ const create = async (model, context) => {
         }, context)
     }
     let entity = await db.designation.findOne({
-        code: model.code,
-        organization: context.organization.id
+        code: model.code.toLowerCase(),
+        organization: context.organization
     })
 
     if (entity) {
-        throw new Error('designation code ' + model.code + ' already exists')
+        throw new Error('CODE_EXISTS')
     }
 
-    entity = await new db.designation({
+    entity = new db.designation({
         code: model.code.toLowerCase(),
         name: model.name,
         level: model.level || 1,
-        organization: context.organization
-    }).save()
+        organization: context.organization,
+        tenant: context.tenant
+    })
+
+    await set(model, entity, context)
+    await entity.save()
 
     log.end()
 
     return entity
 }
 
-const update = async (model, entity, context) => {
-    context.logger.debug('services/designations:update')
+exports.update = async (id, model, context) => {
+    let log = context.logger.start('services/designations:update')
+    let entity = await db.designation.findById(id)
 
-    if (model.code) {
-        if (entity.code.toLowerCase() !== model.code.toLowerCase()) {
-            let exists = await db.designation.findOne({
-                code: model.code,
-                organization: context.organization.id
-            })
+    await set(model, entity, context)
+    await entity.save()
 
-            if (exists) {
-                throw new Error('designation code ' + model.code + ' with status ' + exists.status + ' already exists')
-            }
-        }
-
-        entity.code = model.code
-    }
-
-    if (model.name) {
-        entity.name = model.name
-    }
-
-    if (model.level) {
-        entity.level = model.level
-    }
-
-    return entity.save()
+    log.end()
+    return entity
 }
 
-const get = async (query, context) => {
+exports.remove = async (id, context) => {
+    let log = context.logger.start('services/designations:update')
+    return this.update(id, {
+        status: 'inactive'
+    }, context)
+}
+
+exports.get = async (query, context) => {
     context.logger.start('get')
     if (!query) {
         query = { code: 'default', name: 'Default' }
     }
+
+    if (query._bsontype === 'ObjectID') {
+        query = {
+            id: query.toString()
+        }
+    }
+
     let designation
     if (typeof query === 'string') {
         if (query.isObjectId()) {
             designation = await db.designation.findById(query)
         } else {
             designation = await db.designation.findOne({
-                code: {
-                    $regex: query.code,
-                    $options: 'i'
-                },
-                organization: context.organization.id
+                code: query.toLowerCase(),
+                organization: context.organization
             })
         }
         if (designation) {
@@ -135,7 +162,7 @@ const get = async (query, context) => {
         })
 
         if (!designation) {
-            designation = await create({
+            designation = await this.create({
                 name: query.name,
                 code: query.code
             }, context)
@@ -145,25 +172,27 @@ const get = async (query, context) => {
     return designation
 }
 
-const getById = async (id) => {
-    return db.designation.findById(id)
-}
-
-const search = async (query, context) => {
+exports.search = async (query, paging, context) => {
     let log = context.logger.start('services/designations:search')
 
+    let sorting = ''
+    if (paging && paging.sort) {
+        sorting = paging.sort
+    }
+
+    let sort = {}
+
+    switch (sorting) {
+        default:
+            sort['code'] = 1
+            break
+    }
     query = query || {}
     let where = {
-        organization: context.organization.id,
+        organization: context.organization,
         status: query.status || 'active'
     }
 
-    // if (query.name) {
-    //     where['name'] = {
-    //         $regex: query.name,
-    //         $options: 'i'
-    //     }
-    // }
     if (query.name) {
         where['name'] = {
             $regex: query.name,
@@ -182,14 +211,17 @@ const search = async (query, context) => {
         }
     }
 
-    let designations = await db.designation.find(where)
-
+    const count = await db.designation.find(where).count()
+    let items
+    if (paging) {
+        items = await db.designation.find(where).sort(sort).skip(paging.skip).limit(paging.limit).populate(populate)
+    } else {
+        items = await db.designation.find(where).sort(sort).populate(populate)
+    }
     log.end()
-    return designations
-}
 
-exports.get = get
-exports.create = create
-exports.update = update
-exports.getById = getById
-exports.search = search
+    return {
+        count: count,
+        items: items
+    }
+}

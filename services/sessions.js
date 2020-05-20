@@ -23,6 +23,18 @@ exports.get = async (query, context) => {
     }
     return entity
 }
+
+exports.searchByUser = async (user, context) => {
+
+    let query = {
+        user: user,
+        status: 'active'
+    }
+
+    let items = await db.session.find(query).populate('user')
+
+    return items
+}
 /** */
 exports.initiate = async (model, context) => {
     let log = context.logger.start('services/sessions:create')
@@ -37,6 +49,10 @@ exports.initiate = async (model, context) => {
     }).save()
 
     session.templateCode = model.templateCode || 'session-initiated'
+
+    session.user.roles = await roleService.search({
+        user: session.user
+    }, null, context)
 
     await offline.queue('session', 'initiate', session, context)
     log.end()
@@ -57,7 +73,10 @@ exports.update = async (id, model, context) => {
 
     await session.save()
 
-    await offline.queue('session', 'start', session, context)
+    if (session.status != 'expired') {
+        await offline.queue('session', 'start', session, context)
+    }
+
     return session
 }
 

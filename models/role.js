@@ -8,6 +8,15 @@ module.exports = {
         index: true,
         unique: true
     },
+    code: {
+        type: String,
+        lowercase: true
+    },
+    email: {
+        type: String,
+        lowercase: true
+    },
+    phone: String,
     type: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'roleType',

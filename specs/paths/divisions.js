@@ -1,54 +1,27 @@
 module.exports = [{
     url: '/',
+    get: {
+        permissions: ['organization.user']
+    },
     post: {
-        'parameters': [{
-            'name': 'body',
-            'in': 'body',
-            'description': 'First Time in EMS',
-            'required': true
-        }, {
-            'name': 'x-organization-code',
-            'in': 'header',
-            'description': 'organization code',
-            'required': true
-        }, {
-            'name': 'tenant-api-key',
-            'in': 'header',
-            'description': 'Tenant Api Key',
-            'required': true,
-            'type': 'string'
-        }],
-        'responses': {
-            'default': {
-                'description': 'Unexpected error',
-                'schema': {
-                    '$ref': '#/definitions/Error'
-                }
-            }
-        }
+        permissions: ['organization.admin']
+    }
+}, {
+    url: '/bulk',
+    post: {
+        id: 'create-bulk',
+        summary: 'bulk create',
+        permissions: ['organization.admin']
+    }
+}, {
+    url: '/:id',
+    put: {
+        permissions: ['organization.admin']
+    },
+    delete: {
+        permissions: ['organization.admin']
     },
     get: {
-        'summary': 'Get all divisions',
-        'description': 'get by id',
-        'parameters': [{
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
-            'name': 'tenant-api-key',
-            'in': 'header',
-            'description': 'Tenant Api Key',
-            'required': true,
-            'type': 'string'
-        }],
-        'responses': {
-            'default': {
-                'description': 'Unexpected error',
-                'schema': {
-                    '$ref': '#/definitions/Error'
-                }
-            }
-        }
+        permissions: ['organization.user']
     }
 }]

@@ -3,7 +3,7 @@
 const sendIt = require('@open-age/send-it-client')
 
 exports.process = async (employee, context) => {
-    let message = {
+    await sendIt.dispatch({
         data: {
             id: employee.id,
             name: employee.name
@@ -13,7 +13,5 @@ exports.process = async (employee, context) => {
         },
         to: employee.supervisor || context.organization.owner
         // options: options
-    }
-
-    await sendIt.dispatch(message, context)
+    }, context)
 }

@@ -1,22 +1,28 @@
 'use strict'
-const profile = require('./profile')
+const profileMapper = require('./profile')
+const employeeMapper = require('./employee')
+const studentMapper = require('./student')
+const organizationMapper = require('./organization')
 
 exports.toModel = (entity, context) => {
-    if (entity._bsontype === 'ObjectId') {
+    if (entity._bsontype === 'ObjectID') {
         return {
             id: entity.toString()
         }
     }
 
+    let isSelf = (entity.id === context.role.id)
+
     let model = {
         id: entity.id,
         level: entity.level,
-        key: entity.key,
         code: entity.code,
         permissions: entity.permissions || [],
         dependents: [],
         isCodeUpdated: entity.isCodeUpdated
     }
+
+    if (isSelf) { model.key = entity.key }
 
     if (entity.type) {
         if (entity.type.permissions) {
@@ -27,7 +33,7 @@ exports.toModel = (entity, context) => {
     }
 
     if (entity.user) {
-        if (entity.user._bsontype === 'ObjectId') {
+        if (entity.user._bsontype === 'ObjectID') {
             model.user = {
                 id: entity.user.toString()
             }
@@ -40,8 +46,10 @@ exports.toModel = (entity, context) => {
                 phone: entity.user.phone,
                 status: entity.user.status,
                 picUrl: entity.user.picUrl,
-                profile: profile.toModel(entity.user.profile, context),
-                identities: entity.user.identities
+                profile: profileMapper.toModel(entity.user.profile, context),
+                identities: entity.user.identities,
+                address: entity.user.address,
+                meta: entity.user.meta
             }
 
             model.code = model.user.code
@@ -54,121 +62,25 @@ exports.toModel = (entity, context) => {
     }
 
     if (entity.dependents.length) {
-        entity.dependents.forEach(element => {
-            let dependent = {
-                role: {
-                    id: element.role._doc ? element.role.id : element.role.toString(),
-                    code: element.role._doc ? element.role.code : undefined,
-                    key: element.role._doc ? element.role.key : undefined,
-                    permissions: [],
-                    isDefaultRole: false
-                },
-                relation: element.relation
-            }
-
-            if (element.permissions) {
-                element.role.permissions.forEach((permission) => {
-                    dependent.role.permissions.push(permission)
-                })
-            }
-
-            if (element.role.type) {
-                if (element.role.type.permissions) {
-                    element.role.type.permissions.forEach((permission) => {
-                        dependent.role.permissions.push(permission)
-                    })
-                }
-            }
-
-            if (element.role.user) {
-                dependent.role.user = element.role.user._doc ? {
-                    id: element.role.user.id,
-                    email: element.role.user.email,
-                    phone: element.role.user.phone,
-                    profile: profile.toModel(element.role.user.profile, context),
-                    identities: {},
-                    picUrl: element.role.user.picUrl,
-                    isProfileComplete: element.role.user.isProfileComplete,
-                    isPhoneValidate: element.role.user.isPhoneValidate,
-                    isEmailValidate: element.role.user.isEmailValidate
-                } : {
-                        id: element.role.user.toString()
-                    }
-            }
-            model.dependents.push(dependent)
-        })
+        model.dependents = entity.dependents.map(r => exports.toModel(r, context))
     }
 
     if (entity.employee) {
-        if (entity.employee._bsontype === 'ObjectId') {
-            model.employee = {
-                id: entity.employee.toString()
-            }
-        } else {
-            // TODO: don't send out the model.employee
-            model.employee = {
-                id: entity.employee.id,
-                code: entity.employee.code,
-                type: entity.employee.type,
-                phone: entity.employee.phone,
-                email: entity.employee.email,
-                address: entity.employee.address,
-                status: entity.employee.status,
-                profile: entity.employee.profile
-            }
-            model.code = model.employee.code
-            model.email = model.employee.email || model.email
-            model.phone = model.employee.phone || model.phone
-            model.profile = profile.toModel(model.employee.profile, context) || model.profile
-            model.address = model.employee.address || model.address
-            model.status = model.employee.status
-        }
+        model.employee = employeeMapper.toModel(entity.employee, context)
+        model.code = model.code || model.employee.code
+    }
 
-        if (entity.employee.designation) {
-            model.employee.designation = entity.employee.designation._doc ? {
-                id: entity.employee.designation.id,
-                name: entity.employee.designation.name,
-                code: entity.employee.designation.code,
-                level: entity.employee.designation.level
-            } : {
-                    id: entity.employee.designation.toString()
-                }
-        }
-
-        if (entity.employee.division) {
-            model.employee.division = entity.employee.division._doc ? {
-                id: entity.employee.division.id,
-                name: entity.employee.division.name,
-                code: entity.employee.division.code
-            } : {
-                    id: entity.employee.division.toString()
-                }
-        }
+    if (entity.student) {
+        model.student = studentMapper.toModel(entity.student, context)
+        model.code = model.code || model.student.code
     }
 
     if (entity.organization) {
-        model.organization = entity.organization._doc ? {
-            id: entity.organization.id,
-            name: entity.organization.name,
-            code: entity.organization.code,
-            shortName: entity.organization.shortName,
-            type: entity.organization.type,
-            logo: entity.organization.logo,
-            email: entity.organization.email,
-            phone: entity.organization.phone,
-            about: entity.organization.about,
-            address: entity.organization.address,
-            status: entity.organization.status,
-            meta: entity.organization.meta,
-            isProfileCompleted: entity.organization.isProfileCompleted
-            // owner: entity.organization.owner
-        } : {
-                id: entity.organization.toString()
-            }
+        model.organization = organizationMapper.toModel(entity.organization, context)
     }
 
     if (entity.tenant) {
-        if (entity.tenant._bsontype === 'ObjectId') {
+        if (entity.tenant._bsontype === 'ObjectID') {
             model.tenant = {
                 id: entity.tenant.toString()
             }
@@ -193,5 +105,58 @@ exports.toModel = (entity, context) => {
 exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
         return exports.toModel(entity, context)
+    })
+}
+
+exports.toSummaryModel = (entity, context) => {
+    if (entity._bsontype === 'ObjectID') {
+        return {
+            id: entity.toString()
+        }
+    }
+
+    let model = {
+        id: entity.id,
+        level: entity.level,
+        code: entity.code
+    }
+
+    if (entity.user) {
+        if (entity.user._bsontype === 'ObjectID') {
+            model.user = {
+                id: entity.user.toString()
+            }
+        } else {
+            // TODO: don't send out the model.user
+            model.user = {
+                id: entity.user.id,
+                status: entity.user.status,
+                picUrl: entity.user.picUrl,
+                identities: entity.user.identities,
+                meta: entity.user.meta
+            }
+
+            model.email = entity.user.email
+            model.phone = entity.user.phone
+            model.profile = entity.user.profile
+        }
+    } else {
+        model.user = {}
+    }
+
+    if (entity.employee) {
+        model.employee = employeeMapper.toModel(entity.employee, context)
+    }
+
+    if (entity.student) {
+        model.student = studentMapper.toModel(entity.student, context)
+    }
+
+    return model
+}
+
+exports.toSummarySearchModel = (entities, context) => {
+    return entities.map(entity => {
+        return exports.toSummaryModel(entity, context)
     })
 }

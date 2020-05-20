@@ -1,5 +1,5 @@
 exports.get = async (data, defaultProfile, context) => {
-    let entity = {}
+    let entity = defaultProfile || {}
 
     let model = {}
     if (data.profile) {
@@ -11,11 +11,11 @@ exports.get = async (data, defaultProfile, context) => {
     }
 
     if (model.firstName) {
-        entity.firstName = model.firstName
+        entity.firstName = toTitleCase(model.firstName)
     }
 
     if (model.lastName) {
-        entity.lastName = model.lastName
+        entity.lastName = toTitleCase(model.lastName)
     }
 
     if (model.pic && model.pic.url) {
@@ -29,8 +29,12 @@ exports.get = async (data, defaultProfile, context) => {
         entity.dob = model.dob
     }
 
+    if (model.age) {
+        entity.age = model.age
+    }
+
     if (model.fatherName) {
-        entity.fatherName = model.fatherName
+        entity.fatherName = toTitleCase(model.fatherName)
     }
 
     if (model.bloodGroup) {
@@ -55,3 +59,11 @@ exports.generateCode = async (profile) => {
 
     return Math.floor(Math.random() * 1000000000) + 1000000000
 }
+
+const toTitleCase = (phrase) => {
+    return phrase
+        .toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+};

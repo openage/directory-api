@@ -2,13 +2,11 @@
 
 const db = require('../models')
 
-const set = (model, entity, context) => {
+const populate = ''
+
+const set = async (model, entity, context) => {
     if (model.name) {
         entity.name = model.name
-    }
-
-    if (model.description) {
-        entity.description = model.description
     }
 
     if (model.permissions) {
@@ -17,17 +15,16 @@ const set = (model, entity, context) => {
     return entity
 }
 
-exports.create = async (data, context) => {
-    let roleType = new db.roleType({
-        code: data.code.toLowerCase(),
+exports.create = async (model, context) => {
+    let entity = new db.roleType({
+        code: model.code.toLowerCase(),
+        permissions: model.permissions || [model.code.toLowerCase()],
         tenant: context.tenant
     })
 
-    data.permissions = data.permissions || [data.code.toLowerCase()]
-
-    set(data, roleType, context)
-    await roleType.save()
-    return roleType
+    await set(model, entity, context)
+    await entity.save()
+    return entity
 }
 
 exports.get = async (query, context) => {
@@ -61,25 +58,52 @@ exports.get = async (query, context) => {
 }
 
 exports.update = async (id, model, context) => {
-    context.logger.silly('services/role-types:update')
-    let roleType = await db.roleType.findById(id)
-    set(model, roleType, context)
-    await roleType.save()
+    let log = context.logger.start('services/role-types:update')
+    let entity = await db.roleType.findById(id)
+    await set(model, entity, context)
+    await entity.save()
+    log.end()
+    return entity
 }
 
 exports.search = async (query, paging, context) => {
+    let log = context.logger.start('services/role-types:search')
+    let sorting = ''
+    if (paging && paging.sort) {
+        sorting = paging.sort
+    }
+
+    let sort = {}
+
+    switch (sorting) {
+        default:
+            sort['code'] = 1
+            break
+    }
+
+    query = query || {}
     let where = {
         tenant: context.tenant
     }
 
-    // if (context.organization) {
-    //     where.code = {
-    //         $regex: '^' + context.organization.type,
-    //         $options: 'i'
-    //     }
-    // }
+    if (context.organization) {
+        where.code = {
+            $regex: '^' + context.organization.type,
+            $options: 'i'
+        }
+    }
+
+    const count = await db.roleType.find(where).count()
+    let items
+    if (paging) {
+        items = await db.roleType.find(where).sort(sort).skip(paging.skip).limit(paging.limit).populate(populate)
+    } else {
+        items = await db.roleType.find(where).sort(sort).populate(populate)
+    }
+    log.end()
 
     return {
-        items: await db.roleType.find(where)
+        count: count,
+        items: items
     }
 }

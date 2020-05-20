@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt')
+const bcrypt = require('bcryptjs')
 
 exports.toHash = (value) => {
     return bcrypt.hashSync(value, 10)

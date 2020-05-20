@@ -1,7 +1,37 @@
 'use strict'
 
-let logger = require('@open-age/logger')('services/divisions')
 const db = require('../models')
+
+const populate = 'courses'
+
+const set = async (model, entity, context) => {
+    if (model.code && entity.code !== model.code.toLowerCase()) {
+        let exists = await db.division.findOne({
+            code: model.code.toLowerCase(),
+            organization: context.organization
+        })
+
+        if (exists) {
+            throw new Error(`CODE_EXISTS`)
+        }
+
+        entity.code = model.code
+    }
+
+    if (model.name) {
+        entity.name = model.name
+    }
+
+    if (model.address) {
+        entity.address = model.address
+    }
+
+    if (model.status) {
+        entity.status = model.status
+    }
+
+    return entity
+}
 
 const getNewCode = async (field, context) => {
     let lock = await context.lock(`organization:${context.organization.id}:${field}`)
@@ -23,7 +53,7 @@ const getNewDivisionCode = async (options, context) => {
     return getNewCode('lastDivisionCode', context)
 }
 
-const create = async (model, context) => {
+exports.create = async (model, context) => {
     let log = context.logger.start('services/divisions:create')
     if (!model.name) {
         throw new Error('name is needed')
@@ -35,53 +65,62 @@ const create = async (model, context) => {
         }, context)
     }
     let entity = await db.division.findOne({
-        code: model.code,
-        organization: context.organization.id
+        code: model.code.toLowerCase(),
+        organization: context.organization
     })
 
     if (entity) {
-        throw new Error('division code ' + model.code + ' already exists')
+        throw new Error('CODE_EXISTS')
     }
 
-    entity = await new db.division({
+    entity = new db.division({
         code: model.code.toLowerCase(),
         name: model.name,
-        address: model.address,
-        organization: context.organization
-    }).save()
+        organization: context.organization,
+        tenant: context.tenant
+    })
+
+    await set(model, entity, context)
+    await entity.save()
 
     log.end()
 
     return entity
 }
 
-const update = async (model, entity, context) => {
-    context.logger.debug('services/divisions:update')
+exports.update = async (id, model, context) => {
+    let log = context.logger.start('services/divisions:update')
+    let entity = await db.division.findById(id)
 
-    if (model.code) {
-        if (entity.code.toLowerCase() !== model.code.toLowerCase()) {
-            let exists = await db.division.findOne({
-                code: model.code,
-                organization: context.organization.id
-            })
+    await set(model, entity, context)
+    await entity.save()
 
-            if (exists) {
-                throw new Error('division code ' + model.code + ' with status ' + exists.status + ' already exists')
-            }
-        }
-
-        entity.code = model.code
-    }
-
-    if (model.name) {
-        entity.name = model.name
-    }
-
-    return entity.save()
+    log.end()
+    return entity
 }
 
-const search = async (query, context) => {
-    logger.start('search')
+exports.remove = async (id, context) => {
+    let log = context.logger.start('services/divisions:update')
+
+    return this.update(id, {
+        status: 'inactive'
+    }, context)
+}
+
+exports.search = async (query, paging, context) => {
+    let log = context.logger.start('services/divisions:search')
+    let sorting = ''
+    if (paging && paging.sort) {
+        sorting = paging.sort
+    }
+
+    let sort = {}
+
+    switch (sorting) {
+        default:
+            sort['code'] = 1
+            break
+    }
     query = query || {}
 
     let where = {
@@ -106,40 +145,49 @@ const search = async (query, context) => {
         }
     }
 
-    let divisions = await db.division.find(where)
-    return divisions
+    const count = await db.division.find(where).count()
+    let items
+    if (paging) {
+        items = await db.division.find(where).sort(sort).skip(paging.skip).limit(paging.limit).populate(populate)
+    } else {
+        items = await db.division.find(where).sort(sort).populate(populate)
+    }
+    log.end()
+
+    return {
+        count: count,
+        items: items
+    }
 }
 
-const getById = async (id, context) => {
-    logger.start('getById')
-
-    return db.division.findById(id)
-}
-
-const get = async (query, context) => {
+exports.get = async (query, context) => {
     context.logger.start('get')
     if (!query) {
         query = { code: 'default', name: 'Default' }
     }
+
+    if (query._bsontype === 'ObjectID') {
+        query = {
+            id: query.toString()
+        }
+    }
+
     let division
     if (typeof query === 'string') {
         if (query.isObjectId()) {
-            division = await db.division.findById(query)
+            division = await db.division.findById(query).populate('courses')
         } else {
             division = await db.division.findOne({
-                code: {
-                    $regex: query.code,
-                    $options: 'i'
-                },
-                organization: context.organization.id
-            })
+                code: query.toLowerCase(),
+                organization: context.organization
+            }).populate('courses')
         }
         if (division) {
             return division
         }
     }
     if (query.id) {
-        division = await db.division.findById(query.id)
+        division = await db.division.findById(query.id).populate('courses')
         if (division) {
             return division
         }
@@ -152,7 +200,7 @@ const get = async (query, context) => {
                 $options: 'i'
             },
             organization: context.organization.id
-        })
+        }).populate('courses')
         if (division) {
             return division
         }
@@ -165,10 +213,10 @@ const get = async (query, context) => {
                 $options: 'i'
             },
             organization: context.organization.id
-        })
+        }).populate('courses')
 
         if (!division) {
-            division = await create({
+            division = await this.create({
                 name: query.name,
                 code: query.code
             }, context)
@@ -177,9 +225,3 @@ const get = async (query, context) => {
 
     return division
 }
-
-exports.create = create
-exports.update = update
-exports.search = search
-exports.getById = getById
-exports.get = get

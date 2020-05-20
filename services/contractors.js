@@ -2,6 +2,33 @@
 
 const db = require('../models')
 
+const populate = ''
+
+const set = async (model, entity, context) => {
+    if (model.code && entity.code !== model.code.toLowerCase()) {
+        let exists = await db.contractor.findOne({
+            code: model.code.toLowerCase(),
+            organization: context.organization
+        })
+
+        if (exists) {
+            throw new Error(`CODE_EXISTS`)
+        }
+
+        entity.code = model.code
+    }
+
+    if (model.name) {
+        entity.name = model.name
+    }
+
+    if (model.status) {
+        entity.status = model.status
+    }
+
+    return entity
+}
+
 const getNewCode = async (field, context) => {
     let lock = await context.lock(`organization:${context.organization.id}:${field}`)
 
@@ -24,7 +51,7 @@ const getNewContractorCode = async (options, context) => {
     return getNewCode('lastContractorCode', context)
 }
 
-const create = async (model, context) => {
+exports.create = async (model, context) => {
     let log = context.logger.start('services/contractors:create')
     if (!model.name) {
         throw new Error('name is needed')
@@ -35,51 +62,65 @@ const create = async (model, context) => {
             name: model.name
         }, context)
     }
-    let contractor = await db.contractor.findOne({
+    let entity = await db.contractor.findOne({
         code: model.code,
         organization: context.organization.id
     })
 
-    if (contractor) {
-        throw new Error('contractor code ' + model.code + ' with status ' + contractor.status + ' already exists')
+    if (entity) {
+        throw new Error('CODE_EXISTS')
     }
 
-    contractor = await new db.contractor({
+    entity = new db.contractor({
         code: model.code.toLowerCase(),
         name: model.name,
-        organization: context.organization
-    }).save()
+        status: 'active',
+        organization: context.organization,
+        tenant: context.tenant
+    })
+
+    await set(model, entity, context)
+    await entity.save()
 
     log.end()
 
-    return contractor
+    return entity
 }
 
-const update = async (model, entity, context) => {
-    context.logger.debug('services/contractors:update')
+exports.update = async (id, model, context) => {
+    let log = context.logger.start('services/contractors:update')
+    let entity = await db.contractor.findById(id)
 
-    if (model.code && entity.code.toLowerCase() !== model.code.toLowerCase()) {
-        let exists = await db.contractor.findOne({
-            code: model.code,
-            organization: context.organization.id
-        })
+    await set(model, entity, context)
+    await entity.save()
 
-        if (exists) {
-            throw new Error(`contractor with code '${model.code}' already exists`)
-        }
-
-        entity.code = model.code
-    }
-
-    if (model.name) {
-        entity.name = model.name
-    }
-
-    return entity.save()
+    log.end()
+    return entity
 }
 
-const search = async (query, context) => {
+exports.remove = async (id, context) => {
+    let log = context.logger.start('services/contractors:remove')
+
+    return this.update(id, {
+        status: 'inactive'
+    }, context)
+}
+
+exports.search = async (query, paging, context) => {
     let log = context.logger.start('services/contractors:search')
+    let sorting = ''
+    if (paging && paging.sort) {
+        sorting = paging.sort
+    }
+
+    let sort = {}
+
+    switch (sorting) {
+        default:
+            sort['code'] = 1
+            break
+    }
+
     query = query || {}
 
     let where = {
@@ -104,15 +145,32 @@ const search = async (query, context) => {
         }
     }
 
-    let items = await db.contractor.find(where)
+    const count = await db.contractor.find(where).count()
+    let items
+    if (paging) {
+        items = await db.contractor.find(where).sort(sort).skip(paging.skip).limit(paging.limit).populate(populate)
+    } else {
+        items = await db.contractor.find(where).sort(sort).populate(populate)
+    }
 
     log.end()
 
-    return items
+    return {
+        count: count,
+        items: items
+    }
 }
 
-const get = async (query, context) => {
+exports.get = async (query, context) => {
     context.logger.start('get')
+    if (!query) {
+        return
+    }
+    if (query._bsontype === 'ObjectID') {
+        query = {
+            id: query.toString()
+        }
+    }
     let contractor
     if (typeof query === 'string') {
         if (query.isObjectId()) {
@@ -156,11 +214,11 @@ const get = async (query, context) => {
                 $regex: query.name,
                 $options: 'i'
             },
-            organization: context.organization.id
+            organization: context.organization
         })
 
         if (!contractor) {
-            contractor = await create({
+            contractor = await this.create({
                 name: query.name,
                 code: query.code
             }, context)
@@ -169,8 +227,3 @@ const get = async (query, context) => {
 
     return contractor
 }
-
-exports.get = get
-exports.create = create
-exports.update = update
-exports.search = search

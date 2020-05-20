@@ -2,6 +2,8 @@
 const Guid = require('guid')
 const db = require('../models')
 
+const shortid = require('shortid')
+
 const userService = require('./users')
 
 const set = async (model, entity, context) => {
@@ -20,6 +22,10 @@ const set = async (model, entity, context) => {
         entity.name = model.name
     }
 
+    if (model.meta) {
+        entity.meta = model.meta
+    }
+
     if (model.logo) {
         entity.logo = {
             url: model.logo.url,
@@ -29,6 +35,45 @@ const set = async (model, entity, context) => {
 
     if (model.config) {
         entity.config = model.config
+    }
+
+    if (model.navs) {
+        entity.navs = []
+
+        for (const nav of model.navs) {
+            entity.navs.push(nav)
+        }
+    }
+
+    if (model.styles != undefined) {
+        entity.styles = model.styles
+    }
+
+    if (model.social) {
+        entity.social = []
+
+        for (const social of model.social) {
+            entity.social.push({
+                model: {
+                    code: social.model ? social.model.code : 'default'
+                },
+                config: social.config
+            })
+        }
+    }
+
+    if (model.rebranding != undefined) {
+        entity.rebranding = model.rebranding
+    }
+
+    if (model.services && model.services.length) {
+        entity.services = model.services.map(s => {
+            return {
+                code: s.code,
+                name: s.name,
+                url: s.url
+            }
+        })
     }
     return entity
 }
@@ -60,8 +105,9 @@ exports.create = async (model, context) => {
 }
 
 exports.update = async (id, model, context) => {
-    let entity = await getById(id, context)
+    let entity = await this.get(id, context)
     await set(model, entity, context)
+    await entity.save()
     return entity
 }
 
@@ -73,44 +119,35 @@ const getById = async (id, context) => {
 
 const getByCode = async (code, context) => {
     context.logger.start('services/tenants:getByCode')
-    return db.tenant.findOne({ code: code }).populate('owner')
+
+    if (code === 'my') {
+        return context.tenant
+    }
+
+    return db.tenant.findOne({ code: code.toLowerCase() }).populate('owner')
+}
+
+const getByHost = async (host, context) => {
+    context.logger.start('services/tenants:getByHost')
+    return db.tenant.findOne({ host: host.toLowerCase() }).populate('owner')
 }
 
 exports.get = async (query, context) => {
-    let where = {
-    }
     if (typeof query === 'string') {
-        if (query === 'my') {
-            return context.tenant
-        }
-
         if (query.isObjectId()) {
             return db.tenant.findById(query).populate('owner')
         }
         if (query.startsWith('host:')) {
-            let host = query.substring(5).toLowerCase()
-            where['host'] = host
-
-            // if (host === 'localhost:4205') {
-            //     where['code'] = 'aqua'
-            // } else {
-            //     where['host'] = host
-            // }
+            return getByHost(query.substring(5), context)
         } else {
-            where['code'] = query.toLowerCase()
+            return getByCode(query, context)
         }
-        return db.tenant.findOne(where).populate('owner')
     } else if (query.id) {
         return db.tenant.findById(query.id).populate('owner')
     } else if (query.code) {
-        if (query.code === 'my') {
-            return context.tenant
-        }
-        where['code'] = query.code.toLowerCase()
-        return db.tenant.findOne(where).populate('owner')
+        return getByCode(query.code, context)
     } else if (query.host) {
-        where['host'] = query.host.toLowerCase()
-        return db.tenant.findOne(where).populate('owner')
+        return getByHost(query.host, context)
     }
     return null
 }
@@ -123,6 +160,24 @@ exports.search = async (query, paging, context) => {
     }
 
     return { items: db.tenant.find(where) }
+}
+
+exports.newCode = async (code, context) => {
+    // if (code) {
+    //     shortid.characters(`0123456789${code}`)
+    // } else {
+    //     shortid.characters('0123456789abcdefghijklmnopqrstuvwxyz')
+    // }
+
+    code = shortid.generate().toLowerCase()
+
+    let entity = await this.get(code, context)
+
+    if (!entity) {
+        return code
+    }
+
+    return this.newCode(code, context)
 }
 
 exports.getById = getById

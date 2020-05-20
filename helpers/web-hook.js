@@ -1,133 +1,59 @@
 const client = new (require('node-rest-client-promise')).Client()
-var providerConfig = require('config').get('providers')
 var appRoot = require('app-root-path')
-var fs = require('fs')
-var paramCase = require('param-case')
 
-const getMapper = (entity, type, context) => {
-    let mapper = null
+var systemHooks = require('config').get('hooks')
 
-    if (fs.existsSync(`${appRoot}/mappers/${paramCase(type)}/${entity}.js`)) {
-        mapper = require(`${appRoot}/mappers/${paramCase(type)}/${entity}`)
-    }
+/**
+ * action: {
+ *     "code": "update-ams-user",
+ *     "name": "Yesterday's Task",
+ *     "handler": "app", // app,backend,
+ *     "type": "view-task-list", // GET, POST, PUT, DELETE
+ *     "config": {
+ *         url: ':ams/users'
+ *         url: 'http://...',
+ *         action: 'POST'
+ *         headers: {
+ *             x-role-key: '{{context.role.key}}'
+ *         },
+ *         data: {} // if specified is the payload
+ *     }
+ * }
+ */
 
-    if (!mapper && fs.existsSync(`${appRoot}/mappers/${entity}.js`)) {
-        mapper = require(`${appRoot}/mappers/${entity}`)
-    }
+const getMapper = (mapper, context) => {
+    if (mapper) {
+        if (mapper.code) {
+            let handler = require(`${appRoot}/mappers/${mapper.code}`)
 
-    return mapper || {}
-}
-
-const fromService = (entity, action, serviceConfig, version) => {
-    if (!serviceConfig) {
-        return {}
-    }
-
-    const retVal = {
-        root: serviceConfig.url
-    }
-
-    if (serviceConfig.default && version) { // either you have default attribute or its the only config available
-        serviceConfig = serviceConfig[version]
-    }
-
-    if (!serviceConfig.hooks || !serviceConfig.hooks[entity] || !serviceConfig.hooks[entity][action]) {
-        return retVal
-    }
-
-    let commonConfig = serviceConfig.hooks.config || {}
-    let hookConfig = serviceConfig.hooks[entity][action]
-    if (typeof hookConfig === 'string') {
-        retVal.url = hookConfig
-    } else {
-        retVal.url = hookConfig.url
-    }
-
-    retVal.action = hookConfig.action || commonConfig.action
-    retVal.headers = hookConfig.headers || commonConfig.headers
-    retVal.data = hookConfig.data || commonConfig.data
-
-    return retVal
-}
-
-const extractConfig = (entity, action, data, tenantService, context) => {
-    let serviceCode = tenantService.code
-    let serviceVersion = tenantService.version || 'default'
-
-    let tenantLevel = fromService(entity, action, tenantService, serviceVersion)
-
-    let systemLevel = {}
-    let orgLevel = {}
-
-    if (serviceCode) {
-        systemLevel = fromService(entity, action, providerConfig[serviceCode], serviceVersion)
-        if (data.organization && data.organization.services && data.organization.services.length) {
-            let orgService = data.organization.services.find(item => item.code === serviceCode)
-            if (orgService) {
-                orgLevel = fromService(entity, action, orgService, serviceVersion)
+            return {
+                toModel: mapper.method ? handler[mapper.method] : handler.toModel
             }
         }
     }
 
-    let url = orgLevel.url || tenantLevel.url || systemLevel.url
-    let root = orgLevel.root || tenantLevel.root || systemLevel.root
-
-    if (!url) {
-        return
+    return {
+        toModel: (e) => {
+            return e
+        }
     }
-
-    if (url.indexOf('http') !== 0) {
-        url = `${root}/${url}`
-    }
-
-    let retConfig = {
-        url: url,
-        action: orgLevel.action || tenantLevel.action || systemLevel.action,
-        headers: orgLevel.headers || tenantLevel.headers || systemLevel.headers,
-        data: orgLevel.data || tenantLevel.data || systemLevel.data
-    }
-
-    return retConfig
 }
 
-const send = async (entity, action, data, service, context) => {
-    let config = extractConfig(entity, action, data, service, context)
-    if (!config) {
-        context.logger.debug(`helpers/web-hook.send: no config found`)
-        return
+const buildUrl = (config, injectorData, context) => {
+    let url = config.url
+
+    if (url.startsWith(':')) {
+        let serviceCode = url.split('/')[0].substr(1)
+
+        let service = context.services[serviceCode]
+        url = url.replace(`:${serviceCode}`, service.url)
     }
-    let url = buildUrl(data, config, context)
-    let logger = context.logger.start(`helpers/web-hook.send ${url}`)
 
-    const args = {
-        headers: buildHeader(data, config, context),
-        data: buildPayload(data, entity, service.code, config, context)
-    }
-    let response = await client.postPromise(url, args)
-
-    let parsedResponse = parseResponse(response, service.code, config, context)
-
-    logger.info('reponse', parsedResponse)
-    logger.end()
-
-    return parseResponse
+    return url.inject(injectorData)
 }
 
-const buildUrl = (data, config, context) => {
-    return config.url.inject({
-        data: data,
-        context: context
-    })
-}
-
-const buildHeader = (data, config, context) => {
-    let headers = {}
-    Object.keys(config.headers).forEach(key => {
-        headers[key] = config.headers[key].inject({
-            data: data,
-            context: context
-        })
-    })
+const buildHeader = (config, injectorData, context) => {
+    let headers = JSON.parse(JSON.stringify(config.headers).inject(injectorData))
 
     if (context.tenant) {
         headers['x-tenant-code'] = context.tenant.code
@@ -136,42 +62,146 @@ const buildHeader = (data, config, context) => {
     return headers
 }
 
-const buildPayload = (data, entity, type, config, context) => {
-    if (config.data) {
-        return config.data
+const buildPayload = (config, data, injectorData, context) => {
+    let payload = config.data ? JSON.parse(JSON.stringify(config.data).inject(injectorData)) : data
+
+    if (!config.mapper) {
+        return payload
     }
 
-    let mapper = getMapper(entity, type, context)
-    if (mapper.toModel) {
-        return mapper.toModel(data, context)
-    }
-
-    return data
+    return getMapper(config.mapper).toModel(data, context)
 }
 
-const parseResponse = (response, type, config, context) => {
-    if (config.response) {
-        return config.response
+const parseResponse = (response, config, context) => {
+    // if (response.response.statusCode !== 200) {
+    //     throw new Error(response.response.statusMessage)
+    // }
+
+    if (!config.response) {
+        if (response) {
+            if (response.data && response.data.message) {
+                return response.data.message
+            }
+
+            if (response.message) {
+                return response.message
+            }
+        }
+
+        return 'success'
     }
 
-    if (!config.type) {
-        let mapper = getMapper(type, context)
-        if (mapper.toResponse) {
-            return mapper.toResponse(response)
-        }
+    if (config.response.data) {
+        return config.response.data
     }
 
-    if (response) {
-        if (response.data && response.data.message) {
-            return response.data.message
-        }
-
-        if (response.message) {
-            return response.message
-        }
-    }
-
-    return 'success'
+    return getMapper(config.response.mapper).toModel(response, context)
 }
 
-exports.send = send
+const getActions = (trigger, context) => {
+    let actions = []
+
+    let add = items => {
+        let hook = items.find(h =>
+            h.trigger.entity.toLowerCase() === trigger.entity.toLowerCase() &&
+            h.trigger.action.toLowerCase() === trigger.action.toLowerCase())
+
+        if (hook && hook.actions && hook.actions.length) {
+            hook.actions.forEach(a => {
+                if (a.type.toLowerCase() === 'http' &&
+                    a.handler === 'backend' &&
+                    !actions.find(o => o.code.toLowerCase() === a.code.toLowerCase())
+                ) {
+                    actions.push(a)
+                }
+            })
+        }
+    }
+
+    if (context.organization) {
+        add(context.organization.hooks || [])
+    }
+
+    if (context.tenant) {
+        add(context.tenant.hooks || [])
+    }
+
+    if (systemHooks && systemHooks.length) {
+        add(systemHooks || [])
+    }
+
+    return actions
+}
+
+/**
+ * "trigger": {
+ *   "entity": "attendance",
+ *   "action": "check-in",
+ *   "when": "before"
+ * }
+*/
+
+exports.send = async (trigger, entity, context) => {
+    let actions = getActions(trigger, context)
+
+    context.logger.debug(`actions: ${actions.length}`)
+
+    for (const action of actions) {
+        let log = context.logger.start(`actions/${action.code}`)
+        let config = action.config
+
+        const injectorData = {
+            data: entity,
+            context: context
+        }
+
+        let url = buildUrl(config, injectorData, context)
+
+        const args = {
+            headers: buildHeader(config, injectorData, context),
+            data: buildPayload(config, entity, injectorData, context)
+        }
+
+        log.debug(JSON.stringify({
+            url: `[${config.url}] ${url}`,
+            action: config.action,
+            data: args.data
+        }))
+
+        let response
+
+        switch (config.action.toUpperCase()) {
+            case 'POST':
+                response = await new Promise((resolve, reject) => {
+                    return require('request')({ url: url, method: 'POST', json: args.data, headers: args.headers }, (err, response, body) => {
+                        if (err) {
+                            return reject(err)
+                        }
+                        return resolve(body)
+                    })
+                })
+                break
+            case 'PUT':
+                response = await new Promise((resolve, reject) => {
+                    return require('request')({ url: url, method: 'PUT', json: args.data, headers: args.headers }, (err, response, body) => {
+                        if (err) {
+                            return reject(err)
+                        }
+                        return resolve(body)
+                    })
+                })
+                break
+            case 'GET':
+                response = await client.getPromise(url, args)
+                break
+            case 'DELETE':
+                response = await client.deletePromise(url, args)
+                break
+        }
+
+        let parsedResponse = parseResponse(response, config, context)
+
+        log.info('response', parsedResponse)
+        log.end()
+    }
+}

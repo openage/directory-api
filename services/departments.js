@@ -2,6 +2,33 @@
 
 const db = require('../models')
 
+const populate = ''
+
+const set = async (model, entity, context) => {
+    if (model.code && entity.code !== model.code.toLowerCase()) {
+        let exists = await db.department.findOne({
+            code: model.code.toLowerCase(),
+            organization: context.organization
+        })
+
+        if (exists) {
+            throw new Error(`CODE_EXISTS`)
+        }
+
+        entity.code = model.code
+    }
+
+    if (model.name) {
+        entity.name = model.name
+    }
+
+    if (model.status) {
+        entity.status = model.status
+    }
+
+    return entity
+}
+
 const getNewCode = async (field, context) => {
     let lock = await context.lock(`organization:${context.organization.id}:${field}`)
 
@@ -24,7 +51,7 @@ const getNewDepartmentCode = async (options, context) => {
     return getNewCode('lastDepartmentCode', context)
 }
 
-const create = async (model, context) => {
+exports.create = async (model, context) => {
     let log = context.logger.start('services/departments:create')
     if (!model.name) {
         throw new Error('name is needed')
@@ -35,61 +62,69 @@ const create = async (model, context) => {
             name: model.name
         }, context)
     }
-    let department = await db.department.findOne({
-        code: model.code,
+    let entity = await db.department.findOne({
+        code: model.code.toLowerCase(),
         organization: context.organization.id
     })
 
-    if (department) {
-        throw new Error('department code ' + model.code + ' with status ' + department.status + ' already exists')
+    if (entity) {
+        throw new Error('CODE_EXISTS')
     }
 
-    department = await new db.department({
+    entity = new db.department({
         code: model.code.toLowerCase(),
         name: model.name,
-        organization: context.organization
-    }).save()
+        organization: context.organization,
+        tenant: context.tenant
+    })
+
+    await set(model, entity, context)
+    await entity.save()
 
     log.end()
 
-    return department
+    return entity
 }
 
-const update = async (model, entity, context) => {
-    context.logger.debug('services/departments:update')
+exports.update = async (id, model, context) => {
+    let log = context.logger.start('services/departments:update')
 
-    if (model.code) {
-        if (entity.code.toLowerCase() !== model.code.toLowerCase()) {
-            let exists = await db.department.findOne({
-                code: model.code,
-                organization: context.organization.id
-            })
+    let entity = await db.department.findById(id)
 
-            if (exists) {
-                throw new Error(`department with code '${model.code}' already exists`)
-            }
-        }
+    await set(model, entity, context)
+    await entity.save()
 
-        entity.code = model.code
-    }
-
-    if (model.name) {
-        entity.name = model.name
-    }
-
-    if (model.level) {
-        entity.level = model.level
-    }
-
-    return entity.save()
+    log.end()
+    return entity
 }
 
-const search = async (query, context) => {
+exports.remove = async (id, context) => {
+    let log = context.logger.start('services/departments:remove')
+
+    return this.update(id, {
+        status: 'inactive'
+    }, context)
+}
+
+exports.search = async (query, paging, context) => {
     let log = context.logger.start('services/departments:search')
+    let sorting = ''
+    if (paging && paging.sort) {
+        sorting = paging.sort
+    }
+
+    let sort = {}
+
+    switch (sorting) {
+        default:
+            sort['code'] = 1
+            break
+    }
+
     query = query || {}
 
     let where = {
-        organization: context.organization.id,
+        organization: context.organization,
         status: query.status || 'active'
     }
 
@@ -110,30 +145,42 @@ const search = async (query, context) => {
         }
     }
 
-    let items = await db.department.find(where)
-
+    const count = await db.department.find(where).count()
+    let items
+    if (paging) {
+        items = await db.department.find(where).sort(sort).skip(paging.skip).limit(paging.limit).populate(populate)
+    } else {
+        items = await db.department.find(where).sort(sort).populate(populate)
+    }
     log.end()
 
-    return items
+    return {
+        count: count,
+        items: items
+    }
 }
 
-const get = async (query, context) => {
+exports.get = async (query, context) => {
     context.logger.start('get')
 
     if (!query) {
         query = { code: 'default', name: 'Default' }
     }
+
+    if (query._bsontype === 'ObjectID') {
+        query = {
+            id: query.toString()
+        }
+    }
+
     let department
     if (typeof query === 'string') {
         if (query.isObjectId()) {
             department = await db.department.findById(query)
         } else {
             department = await db.department.findOne({
-                code: {
-                    $regex: query.code,
-                    $options: 'i'
-                },
-                organization: context.organization.id
+                code: query.toLowerCase(),
+                organization: context.organization
             })
         }
         if (department) {
@@ -170,7 +217,7 @@ const get = async (query, context) => {
         })
 
         if (!department) {
-            department = await create({
+            department = await this.create({
                 name: query.name,
                 code: query.code
             }, context)
@@ -179,7 +226,3 @@ const get = async (query, context) => {
 
     return department
 }
-exports.get = get
-exports.create = create
-exports.update = update
-exports.search = search

@@ -26,7 +26,7 @@ exports.get = async (query, context) => {
             return exports.getByEmail(query, context)
         }
 
-        if (validator.isMobilePhone(query)) {
+        if (validator.isMobilePhone(query, 'any')) {
             return exports.getByPhone(query, context)
         }
 
@@ -52,7 +52,9 @@ exports.get = async (query, context) => {
     if (query.facebookId) {
         return exports.getByFacebookId(query.facebookId, context)
     }
-
+    if (query.googleId) {
+        return exports.getByGoogleId(query.googleId, context)
+    }
     if (query.employee && query.employee.code) {
         return exports.getByEmployeeCode(query.employee.code, context)
     }
@@ -120,36 +122,56 @@ exports.getByFacebookId = async (facebookId, context) => {
     return user
 }
 
+exports.getByGoogleId = async (googleId, context) => {
+    let log = context.logger.start('services/users:getByPhone')
+    let user = db.user.findOne({
+        isTemporary: {
+            $ne: true
+        },
+        googleId: googleId,
+        tenant: context.tenant
+    })
+
+    log.end()
+    return user
+}
 exports.getByEmployeeCode = async (code, context) => {
     let log = context.logger.start('services/users:getByEmployeeCode')
 
     let employee = await db.employee.findOne({
         code: code,
-        organization: context.organization
-        // tenant: context.tenant
+        organization: context.organization,
+        tenant: context.tenant
     }).populate('user')
 
-    if (!employee) {
-        throw new Error('employee not found')
-    }
+    // if (!employee) {
+    //     throw new Error('employee not found')
+    // }
 
     log.end()
+    if (!employee) {
+        return
+    }
     return employee.user
 }
 
 exports.getByStudentCode = async (code, context) => {
     let log = context.logger.start('services/users:getByStudentCode')
 
-    let user = db.user.findOne({
+    let student = await db.student.findOne({
         isTemporary: {
             $ne: true
         },
         code: code,
+        organization: context.organization,
         tenant: context.tenant
-    })
+    }).populate('user')
 
     log.end()
-    return user
+    if (!student) {
+        return
+    }
+    return student.user
 }
 
 exports.search = async (query, paging, context) => {

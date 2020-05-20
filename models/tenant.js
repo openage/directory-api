@@ -14,28 +14,26 @@ module.exports = {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'role'
     },
-    navs: [{
-        title: String,
-        icon: String,
-        items: [{
+    meta: Object,
+    navs: [{ type: Object }],
+    hooks: [{
+        trigger: {
+            entity: String,
+            action: String,
+            when: String
+        },
+        actions: [{
+            code: String,
             name: String,
-            url: String,
-            icon: String,
-            title: String,
-            routerLink: [String],
-            permissions: [String]
+            handler: String,
+            type: { type: String },
+            config: Object
         }]
     }],
-    hooks: { // obsolete
-        onEmployeeUpdate: String,
-        onEmployeeCreate: String,
-        onEmployeeDelete: String
-    },
     services: [{
         logo: String,
         code: String,
         name: String,
-        description: String,
         url: String, // api root url
         apps: {
             web: String,
@@ -44,19 +42,16 @@ module.exports = {
         },
         hooks: {
             organization: {
-                config: Object,
                 onCreate: String,
                 onUpdate: String,
                 onDelete: String
             },
             employee: {
-                config: Object,
                 onCreate: String,
                 onUpdate: String,
                 onDelete: String
             },
             student: {
-                config: Object,
                 onCreate: String,
                 onUpdate: String,
                 onDelete: String
@@ -67,5 +62,13 @@ module.exports = {
         type: String,
         default: 'active',
         enum: ['active', 'inactive']
-    }
+    },
+    rebranding: Boolean,
+    styles: String,
+    social: [{
+        model: {
+            code: String
+        },
+        config: Object
+    }]
 }

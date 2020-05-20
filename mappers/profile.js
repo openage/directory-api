@@ -1,23 +1,19 @@
 'use strict'
 
+const imageMapper = require('./image')
+
 exports.toModel = (entity, context) => {
     if (!entity) {
         return null
     }
-    let model = {
+    return {
         firstName: entity.firstName,
         lastName: entity.lastName,
+        fatherName: entity.fatherName,
+        bloodGroup: entity.bloodGroup,
         dob: entity.dob,
-        gender: entity.gender
+        age: entity.age,
+        gender: entity.gender,
+        pic: imageMapper.toModel(entity.pic, context)
     }
-
-    if (entity.pic) {
-        model.pic = {
-            url: entity.pic.url,
-            thumbnail: entity.pic.thumbnail,
-            data: entity.pic.thumbnail
-        }
-    }
-
-    return model
 }

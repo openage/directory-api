@@ -1,7 +1,14 @@
 
 const sendIt = require('@open-age/send-it-client')
+const roleService = require('../../services/role-getter')
 
 exports.process = async (session, context) => {
+    if (session.user && (!session.user.roles || !session.user.roles.length)) {
+        session.user.roles = await roleService.search({
+            user: session.user
+        }, null, context)
+    }
+
     await sendIt.dispatch({
         data: {
             otp: session.otp,
@@ -13,7 +20,16 @@ exports.process = async (session, context) => {
         template: {
             code: 'session-started'
         },
-        to: session.user,
+        to: {
+            role: context.role
+        },
         options: { skipInbox: true }
-    }, context)
+    }, {
+        id: context.id,
+        logger: context.logger,
+        role: context.tenant && context.tenant.owner ? context.tenant.owner : context.role,
+        session: session,
+        organization: context.organization,
+        tenant: context.tenant
+    })
 }

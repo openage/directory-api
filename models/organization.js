@@ -20,7 +20,7 @@ module.exports = {
         default: false
     },
 
-    email: String,   // primary contact
+    email: String, // primary contact
     phone: String,
 
     about: String,
@@ -43,6 +43,21 @@ module.exports = {
         country: String
     },
     config: Object,
+    navs: [{ type: Object }],
+    hooks: [{
+        trigger: {
+            entity: String,
+            action: String,
+            when: String
+        },
+        actions: [{
+            code: String,
+            name: String,
+            handler: String,
+            type: { type: String },
+            config: Object
+        }]
+    }],
     services: [{
         logo: String,
         code: String,
@@ -52,6 +67,23 @@ module.exports = {
             web: String,
             android: String,
             iOS: String
+        },
+        hooks: {
+            organization: {
+                onCreate: String,
+                onUpdate: String,
+                onDelete: String
+            },
+            employee: {
+                onCreate: String,
+                onUpdate: String,
+                onDelete: String
+            },
+            student: {
+                onCreate: String,
+                onUpdate: String,
+                onDelete: String
+            }
         }
     }],
     owner: {
@@ -70,12 +102,22 @@ module.exports = {
     lastDepartmentCode: { type: Number, default: 0 },
     lastDesignationCode: { type: Number, default: 0 },
     lastContractorCode: { type: Number, default: 0 },
+    lastCourseCode: { type: Number, default: 0 },
+    lastBatchCode: { type: Number, default: 0 },
+    lastStudentCode: { type: Number, default: 0 },
 
     status: {
         type: String,
         default: 'active',
         enum: ['new', 'active', 'inactive']
     },
+    styles: String,
+    social: [{
+        model: {
+            code: String
+        },
+        config: Object
+    }],
 
     tenant: {
         type: mongoose.Schema.Types.ObjectId,

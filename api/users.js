@@ -5,6 +5,35 @@ const roles = require('../services/roles')
 const userGetter = require('../services/user-getter')
 const paging = require('../helpers/paging')
 
+const inflate = (flattened) => {
+    let model = {}
+
+    Object.getOwnPropertyNames(flattened).forEach(key => {
+        const value = flattened[key]
+
+        if (!value) {
+            return
+        }
+
+        let parts = key.split('-')
+        let index = 0
+        let obj = model
+
+        for (const part of parts) {
+            if (index === parts.length - 1) {
+                obj[part] = value
+            } else {
+                obj[part] = obj[part] || {}
+            }
+
+            obj = obj[part]
+            index++
+        }
+    })
+
+    return model
+}
+
 exports.create = async (req) => {
     let user = await users.create(req.body, req.context)
     return mapper.toSessionModel(user, req.context)
@@ -55,8 +84,13 @@ exports.changePassword = async (req) => {
 }
 
 exports.update = async (req) => {
-    let user = await users.update('me', req.body, req.context)
+    let user = await users.update(req.params.id, req.body, req.context)
     return mapper.toModel(user, req.context)
+}
+
+exports.signOut = async (req) => {
+    let user = await users.signOut(req.params.id, req.context)
+    return 'Signed Out Succesfully'
 }
 
 exports.get = async (req) => {
@@ -70,16 +104,38 @@ exports.get = async (req) => {
 }
 
 exports.exists = async (req) => {
+    let query = inflate(req.query)
     let user
-    if (req.query.email) {
-        user = await userGetter.getByEmail(req.query.email, req.context)
-    } else if (req.query.mobile) {
-        user = await userGetter.getByPhone(req.query.mobile, req.context)
-    } else if (req.query.code) {
-        user = await userGetter.getByCode(req.query.code, req.context)
+    if (query.email) {
+        user = await userGetter.getByEmail(query.email, req.context)
+    } else if (query.mobile) {
+        user = await userGetter.getByPhone(query.mobile, req.context)
+    } else if (query.code) {
+        user = await userGetter.getByCode(query.code, req.context)
+    } else if (query.employee && query.employee.code) {
+        user = await userGetter.getByEmployeeCode(query.employee.code, req.context)
+    } else if (query.student && query.student.code) {
+        user = await userGetter.getByStudentCode(query.student.code, req.context)
     }
 
-    return !!user
+    if (!user) {
+        return {
+            exists: false,
+            logins: {}
+        }
+    }
+    return {
+        exists: true,
+        logins: {
+            otp: true,
+            password: !!user.password,
+            email: !!user.isEmailValidate,
+            phone: !!user.isPhoneValidate,
+            facebook: !!user.facebookId,
+            google: !!user.google,
+            linkedIn: !!user.linkedIn
+        }
+    }
 }
 
 exports.search = async (req) => {
@@ -88,4 +144,34 @@ exports.search = async (req) => {
             return mapper.toSearchModel(i, req.context)
         })
     }
+}
+
+exports.authRedirect = async (req) => {
+    const provider = require(`../providers/${req.params.provider}/auth`)
+
+    if (!provider) {
+        throw new Error('provider not found')
+    }
+    req.context.logger.info('sending redirect url')
+    return { url: provider.getRedirectUrl(req.context) }
+}
+exports.authSuccess = async (req) => {
+    const provider = require(`../providers/${req.params.provider}/auth`)
+
+    if (!provider) {
+        throw new Error('provider not found')
+    }
+    let authCode = req.query.code || req.body.code
+    let user = await provider.success(authCode, req.context)
+
+    return mapper.toModel(user, req.context)
+}
+exports.authLogout = (req) => {
+    const provider = require(`../providers/${req.params.provider}/auth`)
+
+    if (!provider) {
+        throw new Error('provider not found')
+    }
+
+    return provider.logout(req.context)
 }

@@ -13,7 +13,8 @@ exports.process = async (employee, context) => {
         template: {
             code: 'employee-joining'
         },
-        to: { email: employee.email }
-        // options: options
+        options: {
+            to: { email: employee.email }
+        }
     }, context)
 }

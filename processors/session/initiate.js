@@ -1,6 +1,7 @@
 'use strict'
 
 const sendIt = require('@open-age/send-it-client')
+// const roleService = require('../../services/role-getter')
 
 exports.process = async (session, context) => {
     await sendIt.dispatch({
@@ -15,7 +16,16 @@ exports.process = async (session, context) => {
         template: {
             code: session.templateCode || 'session-initiated'
         },
-        to: session.user,
-        options: { skipInbox: true }
-    }, context)
+        to: {
+            role: session.user.roles[0]
+        },
+        options: { isHidden: true }
+    }, {
+        id: context.id,
+        logger: context.logger,
+        role: context.tenant && context.tenant.owner ? context.tenant.owner : context.role,
+        session: session,
+        organization: context.organization,
+        tenant: context.tenant
+    })
 }
