@@ -88,7 +88,11 @@ const set = async (model, entity, context) => {
     }
 
     if (model.meta) {
-        entity.meta = model.meta
+        entity.meta = entity.meta || {}
+        Object.getOwnPropertyNames(model.meta).forEach(key => {
+            entity.meta[key] = model.meta[key]
+        })
+        entity.markModified('meta')
     }
 
     if (model.status) {
@@ -311,9 +315,9 @@ exports.verifyOTP = async (model, context) => {
 
     await entity.save()
 
-    entity.roles = await roles.search({
+    entity.roles = (await roles.search({
         user: entity
-    }, null, context)
+    }, null, context)).items
 
     entity.session = session
 
@@ -345,9 +349,9 @@ exports.verifyPassword = async (model, context) => {
 
     await entity.save()
 
-    entity.roles = await roles.search({
+    entity.roles = (await roles.search({
         user: entity
-    }, null, context)
+    }, null, context)).items
 
     context.setUser(entity)
 
@@ -374,9 +378,9 @@ exports.login = async (model, context) => {
         throw new Error('USER_BLOCKED')
     }
 
-    entity.roles = await roles.search({
+    entity.roles = (await roles.search({
         user: entity
-    }, null, context)
+    }, null, context)).items
 
     context.setUser(entity)
 

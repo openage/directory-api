@@ -14,6 +14,12 @@ module.exports = [{
         permissions: ['tenant.guest', 'organization-guest', 'tenant.user']
     }
 }, {
+    url: '/register',
+    post: {
+        method: 'register',
+        permissions: ['tenant.guest', 'tenant.user']
+    }
+}, {
     url: '/signIn',
     post: {
         method: 'signIn',

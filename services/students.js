@@ -148,9 +148,26 @@ exports.create = async (data, context) => {
         course = await courseService.create(data.course, context)
     }
 
+    if (course) {
+        data.course = course
+    }
+
+    let institute = await instituteService.get(data.institute, context)
+    if (!institute) {
+        institute = await instituteService.create(data.institute, context)
+    }
+
+    if (institute) {
+        data.institute = institute
+    }
+
     let batch = await batchService.get(data.batch, context)
     if (!batch) {
         batch = await batchService.create(data.batch, context)
+    }
+
+    if (batch) {
+        data.batch = batch
     }
 
     if (data.code) {
@@ -163,8 +180,11 @@ exports.create = async (data, context) => {
         data.code = await getNewStudentCode({
             course: course,
             batch: batch,
-            institute: data.institute,
+            institute: institute
         }, context)
+        if (data.code && typeof data.code == 'string') {
+            data.code = data.code.replace(/\s+/g, '')
+        }
     }
 
     if (!data.email) {
@@ -208,6 +228,7 @@ exports.create = async (data, context) => {
             code: data.code,
             phone: data.phone,
             email: data.email,
+            prospectNo: data.prospectNo,
             user: user,
             status: data.status || 'new',
             organization: context.organization,
@@ -234,9 +255,11 @@ exports.create = async (data, context) => {
 
     await role.save()
 
-    await offline.queue('student', 'create', entity, context)
-
     entity.role = role
+
+    if (!data.skipHook) {
+        await offline.queue('student', 'create', entity, context)
+    }
 
     log.end()
     return entity
@@ -245,9 +268,15 @@ exports.create = async (data, context) => {
 exports.update = async (id, model, context) => {
     let log = context.logger.start('services/students:update')
     let entity = await this.get(id, context)
+    var status = entity.status
     await set(model, entity, context)
     await entity.save()
     await offline.queue('student', 'update', entity, context)
+
+    if (entity.status !== status) {
+        await offline.queue('student', entity.status, entity, context)
+    }
+
     log.end()
     return entity
 }
@@ -327,7 +356,6 @@ exports.search = async (query, paging, context) => {
         }
     }
 
-
     if (query.batchmates && context.role.student) {
         where.course = await courseService.get(context.role.student.course, context)
         where.batch = await batchService.get(context.role.student.batch, context)
@@ -398,6 +426,7 @@ exports.setMentor = async (student, mentor, context) => {
 }
 
 exports.get = async (query, context) => {
+    let student
     context.logger.debug('service/students:get')
     if (!query) {
         return null
@@ -409,30 +438,28 @@ exports.get = async (query, context) => {
         }
     }
 
-    let where = {
-        organization: context.organization
-    }
-
-    let id
-
     if (typeof query === 'string') {
         if (query === 'my') {
-            id = context.student.id
+            student = await db.student.findById(context.student.id).populate(populate)
         } else if (query.isObjectId()) {
-            id = query
+            student = await db.student.findById(query).populate(populate)
         } else {
-            where.code = query
+            student = await db.student.findOne({ organization: context.organization, code: query }).populate(populate)
+            if (!student) {
+                student = await db.student.findOne({ organization: context.organization, prospectNo: query }).populate(populate)
+            }
         }
     } else if (query.id) {
-        id = query.id
+        student = await db.student.findById(query.id).populate(populate)
     } else if (query.code) {
-        where.code = query.code
+        student = await db.student.findOne({ organization: context.organization, code: query.code }).populate(populate)
     } else if (query.user) {
-        where.user = query.user
+        student = await db.student.findOne({ organization: context.organization, user: query.user }).populate(populate)
+    } else if (query.prospectNo) {
+        student = await db.student.findOne({ organization: context.organization, prospectNo: query.prospectNo }).populate(populate)
     }
 
-    return (id ? db.student.findById(id) : db.student.findOne(where))
-        .populate(populate)
+    return student
 }
 
 exports.remove = async (id, context) => {

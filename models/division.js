@@ -18,6 +18,7 @@ module.exports = {
         pinCode: String,
         country: String
     },
+    meta: Object,
     timeZone: {
         name: { type: String, default: 'IST' },
         offset: { type: Number, default: 5.5 }

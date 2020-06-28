@@ -1,6 +1,7 @@
 'use strict'
 
 const courses = require('./course')
+const organization = require('./organization')
 
 exports.toModel = (entity, context) => {
     if (!entity) {
@@ -18,7 +19,9 @@ exports.toModel = (entity, context) => {
         code: entity.code,
         status: entity.status,
         address: entity.address,
+        meta: entity.meta,
         timeZone: entity.timeZone,
+        organization: entity.organization ? organization.toSummary(entity.organization) : null,
         courses: (entity.courses && entity.courses.length) ? courses.toSearchModel(entity.courses) : []
     }
 }
@@ -36,6 +39,8 @@ exports.toSummary = (entity, context) => {
         id: entity.id,
         code: entity.code,
         name: entity.name,
+        address: entity.address,
+        meta: entity.meta,
         courses: (entity.courses && entity.courses.length) ? courses.toSearchModel(entity.courses) : []
     }
 }

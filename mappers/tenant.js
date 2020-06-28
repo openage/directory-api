@@ -1,8 +1,31 @@
 'use strict'
 
 const navMapper = require('./nav')
-const serviceMapper = require('./service')
+const hookMapper = require('./hook')
 const imageMapper = require('./image')
+
+const roleMapper = (entity, context) => {
+    if (!entity || entity._bsontype === 'ObjectID' || !context) {
+        return null
+    }
+
+    if (context.hasPermission('tenant.admin')) {
+        return {
+            code: entity.code,
+            email: entity.email,
+            phone: entity.phone
+        }
+    }
+
+    if (context.hasPermission('tenant.owner') || (context.role && entity.id === context.role.id)) {
+        return {
+            code: entity.code,
+            email: entity.email,
+            phone: entity.phone,
+            key: entity.key
+        }
+    }
+}
 
 exports.toModel = (entity, context) => {
     let model = {
@@ -21,6 +44,7 @@ exports.toModel = (entity, context) => {
             }
         }),
         navs: navMapper.toModel(entity.navs, context),
+        owner: roleMapper(entity.owner, context),
         status: entity.status
 
     }
@@ -79,10 +103,10 @@ exports.toModel = (entity, context) => {
         }
     }
 
-    if (context.user && entity.owner && entity.owner.id === context.role.id) {
+    if (context.role && entity.owner && entity.owner.id === context.role.id) {
         model.rebranding = !!entity.rebranding
-        model.key = entity.key
         model.config = entity.config
+        model.hooks = hookMapper.toModel(entity.hooks, context)
     }
     return model
 }

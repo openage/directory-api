@@ -31,7 +31,7 @@ const set = async (model, entity, context) => {
         entity.batches = entity.batches || []
 
         for (const item of model.batches) {
-            let batch = await batchService.get(item, context)
+            let batch = await batchService.get(item.batch, context)
             let courseBatch = entity.batches.find(i => i.batch.id === batch.id)
 
             if (!courseBatch) {
@@ -94,11 +94,17 @@ exports.getNewStudentCode = async (course, batch, institute, context) => {
         course.batches.push(courseBatch)
     }
 
-    courseBatch.lastRollNo = (courseBatch.lastRollNo || 0) + 1
-    await course.save()
-    lock.release()
-
-    return `${batch.code}${institute.code}${course.code}${courseBatch.lastRollNo}`
+    if (courseBatch.lastRollNo) {
+        courseBatch.lastRollNo++
+        await course.save()
+        lock.release()
+        return courseBatch.lastRollNo
+    } else {
+        courseBatch.lastRollNo = `${batch.code}${course.code}1`.replace(/\D/g,'');
+        await course.save()
+        lock.release()
+        return courseBatch.lastRollNo
+    }
 }
 
 exports.create = async (model, context) => {

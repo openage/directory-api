@@ -11,6 +11,7 @@ const userGetter = require('./user-getter')
 const organizationService = require('./organizations')
 const employeeService = require('./employees')
 const studentService = require('./students')
+const permissionsGroup = require('./permission-groups')
 
 const uniqueCodeGenerator = async (user, context) => {
     context.logger.silly('services/roles:uniqueCodeGenerator')
@@ -54,22 +55,20 @@ const set = async (model, entity, context) => {
         entity.status = model.status
     }
 
+    if (model.meta) {
+        entity.meta = entity.meta || {}
+        Object.getOwnPropertyNames(model.meta).forEach(key => {
+            entity.meta[key] = model.meta[key]
+        })
+        entity.markModified('meta')
+    }
+
     if (model.type) {
         entity.type = model.type
     }
 
     if (model.permissions && model.permissions.length) {
-        // let permissions = (entity.permissions.concat(entity.type.permissions)) || []
-        // for (let index = 0; index < model.permissions.length; index++) {
-        //     let permission = model.permissions[index]
-        //     if (permissions.every(item => item !== permission)) {
-        //         if (permission !== 'null') {
-        //             entity.permissions.push(permission)
-        //         }
-        //     }
-        // }
-
-        entity.permissions = [...new Set(model.permissions)]
+        entity.permissions = await permissionsGroup.filterPermissions(await this.filterPermissionsByType(model.permissions, entity.type, context), context)
     }
 
     if (model.dependents && model.dependents.length) {
@@ -90,17 +89,22 @@ const set = async (model, entity, context) => {
 */
 exports.create = async (data, context) => {
     const log = context.logger.start('services/roles:create')
-    let user
+    let user = context.user
     if (data.user) {
         user = await userGetter.get(data.user, context)
-    } else {
-        user = context.user
     }
 
+    let hooks = []
     if (data.organization) {
         context.organization = await organizationService.get(data.organization, context)
         if (!context.organization) {
+            data.organization.skipHook = true
             context.organization = await organizationService.create(data.organization, context)
+            hooks.push({
+                type: 'organization',
+                trigger: 'create',
+                entity: context.organization
+            })
         }
     }
 
@@ -113,7 +117,16 @@ exports.create = async (data, context) => {
         }
 
         data.employee.user = user
+        data.employee.skipRole = true
+        data.employee.skipHook = true
         employee = await employeeService.create(data.employee, context)
+
+        hooks.push({
+            type: 'employee',
+            trigger: 'create',
+            entity: employee
+        })
+
         data.code = employee.code
         data.email = employee.email
         data.phone = employee.phone
@@ -129,7 +142,16 @@ exports.create = async (data, context) => {
         }
 
         data.student.user = user
+        data.student.skipRole = true
+        data.student.skipHook = true
+
         student = await studentService.create(data.student, context)
+
+        hooks.push({
+            type: 'student',
+            trigger: 'create',
+            entity: student
+        })
         data.code = student.code
         data.email = student.email
         data.phone = student.phone
@@ -143,21 +165,41 @@ exports.create = async (data, context) => {
         if (data.employee) {
             let organizationType = context.organization.type || 'organization'
             let userType = employee.type || 'employee'
-            data.type = `${organizationType}.${userType}`
+            data.type = {
+                code: `${organizationType}.${userType}`
+            }
             if (!context.organization.owner) { // the new user would be given owner role
-                data.type = `${organizationType}.superadmin`
+                data.type = {
+                    code: `${organizationType}.superadmin`
+                }
                 data.status = 'active'
+            } else {
+                data.type = {
+                    code: 'user',
+                    name: 'User'
+                }
             }
         } else if (data.student) {
             data.type = 'student'
         } else if (!context.tenant.owner) { // the new user would be given owner role
-            data.type = 'tenant.admin'
+            data.type = {
+                code: 'tenant.admin',
+                name: 'Admin'
+            }
             data.status = 'active'
         } else {
-            data.type = 'user'
+            data.type = {
+                code: 'user',
+                name: 'User'
+            }
         }
     }
-    let roleType = await types.get(data.type, context)
+    let roleType
+    if (typeof query === 'string') {
+        roleType = await types.get(data.type, context)
+    } else {
+        roleType = await types.create(data.type, context)
+    }
 
     if (!data.code) {
         data.code = await uniqueCodeGenerator(data.user, context)
@@ -170,8 +212,9 @@ exports.create = async (data, context) => {
     let role = await new db.role({
         key: data.key,
         code: data.code,
-        email: data.email,
-        phone: data.phone,
+        email: data.email || user.email,
+        phone: data.phone || user.phone,
+        meta: data.meta || {},
         user: user,
         type: roleType,
         employee: employee,
@@ -180,19 +223,28 @@ exports.create = async (data, context) => {
         tenant: context.tenant
     }).save()
 
+    hooks.push({
+        type: 'role',
+        trigger: 'create',
+        entity: role
+    })
+
     if (context.organization && !context.organization.owner) {
         context.organization.owner = role
         await context.organization.save()
     }
-
-    await offline.queue('role', 'create', role, context)
-    log.end()
 
     if (context.user) {
         if (user.id === context.user.id) {
             context.role = role
         }
     }
+
+    for (const hook of hooks) {
+        await offline.queue(hook.type, hook.trigger, hook.entity, context)
+    }
+
+    log.end()
     return role
 }
 
@@ -201,7 +253,7 @@ exports.search = roleGetter.search
 exports.update = async (id, model, context) => {
     context.logger.start('services/roles:update')
 
-    let role = await db.role.findById(id).populate('type')
+    let role = await roleGetter.getById(id, context)
 
     if (model.type) {
         model.type = await types.get(model.type, context)
@@ -257,6 +309,28 @@ const addExtraPermission = async (permission, role, context) => { // add permiss
 
     log.end()
     return role
+}
+
+exports.filterPermissionsByType = async (permissions, type, context) => {
+    let log = context.logger.start('services/roles:filterPermissionsByType')
+
+    let filterd = []
+
+    for (const permission of permissions) {
+        let exist = false
+        for (const item of type.permissions) {
+            if (item == permission) {
+                exist = true
+            }
+        }
+        if (!exist) {
+            filterd.push(permission)
+        }
+    }
+
+    log.end()
+
+    return filterd
 }
 
 exports.getOrCreate = async (data, context) => {

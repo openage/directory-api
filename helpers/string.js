@@ -36,11 +36,22 @@ String.prototype.isUUID = function () {
     return validator.isUUID(this)
 }
 
+String.prototype.toTitleCase = function () {
+    if (!this) {
+        return ''
+    }
+    var sentence = this.toLowerCase().split(' ')
+    for (var i = 0; i < sentence.length; i++) {
+        sentence[i] = sentence[i][0].toUpperCase() + sentence[i].slice(1)
+    }
+    return sentence
+}
+
 // eslint-disable-next-line no-extend-native
 String.prototype.inject = function (data) {
     let template = this
 
-    function getValue(obj, is, value) {
+    const getValue = (obj, is, value) => {
         if (typeof is === 'string') {
             is = is.split('.')
         }

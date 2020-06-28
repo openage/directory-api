@@ -23,7 +23,11 @@ const set = async (model, entity, context) => {
     }
 
     if (model.meta) {
-        entity.meta = model.meta
+        entity.meta = entity.meta || {}
+        Object.getOwnPropertyNames(model.meta).forEach(key => {
+            entity.meta[key] = model.meta[key]
+        })
+        entity.markModified('meta')
     }
 
     if (model.logo) {
@@ -45,7 +49,7 @@ const set = async (model, entity, context) => {
         }
     }
 
-    if (model.styles != undefined) {
+    if (model.styles !== undefined) {
         entity.styles = model.styles
     }
 
@@ -62,7 +66,7 @@ const set = async (model, entity, context) => {
         }
     }
 
-    if (model.rebranding != undefined) {
+    if (model.rebranding !== undefined) {
         entity.rebranding = model.rebranding
     }
 
@@ -72,6 +76,27 @@ const set = async (model, entity, context) => {
                 code: s.code,
                 name: s.name,
                 url: s.url
+            }
+        })
+    }
+
+    if (model.hooks) {
+        entity.hooks = model.hooks.map(t => {
+            return {
+                trigger: {
+                    entity: t.trigger.entity,
+                    action: t.trigger.action,
+                    when: t.trigger.when || 'after'
+                },
+                actions: t.actions.map(a => {
+                    return {
+                        code: a.code.toLowerCase(),
+                        name: a.name,
+                        handler: a.handler || 'backend',
+                        type: a.type || 'http',
+                        config: a.config || {}
+                    }
+                })
             }
         })
     }

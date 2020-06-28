@@ -11,7 +11,7 @@ module.exports = {
         type: String,
         default: 'new',
         enum: [
-            'active', 'expired', 'awaiting'
+            'new', 'active', 'expired', 'awaiting'
         ]
     },
     entity: {

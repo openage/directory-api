@@ -202,19 +202,33 @@ exports.get = async (query, context) => {
     return null
 }
 
-exports.search = async (query, page, context) => {
+exports.search = async (query, pager, context) => {
     context.logger.start('services/roles:search')
-    let where
-    if (context.organization) {
-        where = {
-            tenant: context.tenant,
-            organization: context.organization // TODO:
-        }
-    } else {
-        where = {
-            tenant: context.tenant
-        }
+
+    let sorting = ''
+    if (pager && pager.sort) {
+        sorting = pager.sort
     }
+
+    let sort = {}
+
+    switch (sorting) {
+        default:
+            sort['code'] = 1
+            break
+    }
+
+    let where
+    // if (context.organization) {
+    //     where = {
+    //         tenant: context.tenant,
+    //         organization: context.organization // TODO:
+    //     }
+    // } else {
+    where = {
+        tenant: context.tenant
+    }
+    // }
 
     if (query.status) {
         where.status = query.status
@@ -226,24 +240,57 @@ exports.search = async (query, page, context) => {
         where.user = query.user
     }
 
-    let roleList = await db.role.find(where).populate('type user organization tenant').populate({
-        path: 'employee',
-        populate: {
-            path: 'designation department division'
-        }
-    }).populate({
-        path: 'student',
-        populate: {
-            path: 'batch course institute'
-        }
-    }).populate({
-        path: 'dependents.role',
-        populate: {
-            path: 'user type'
-        }
-    })
+    if (query.code) {
+        where.code = query.code
+    }
 
-    for (const role of roleList) {
+    const page = {
+        count: await db.role.find(where).count()
+    }
+    if (pager) {
+        page.items = await db.role.find(where).sort(sort).skip(pager.skip).limit(pager.limit)
+            .populate('type user organization tenant')
+            .populate({
+                path: 'employee',
+                populate: {
+                    path: 'designation department division'
+                }
+            }).populate({
+                path: 'student',
+                populate: {
+                    path: 'batch course institute'
+                }
+            }).populate({
+                path: 'dependents.role',
+                populate: {
+                    path: 'user type'
+                }
+            })
+
+        page.skip = pager.skip
+        page.limit = pager.limit
+    } else {
+        page.items = await db.role.find(where)
+            .populate('type user organization tenant')
+            .populate({
+                path: 'employee',
+                populate: {
+                    path: 'designation department division'
+                }
+            }).populate({
+                path: 'student',
+                populate: {
+                    path: 'batch course institute'
+                }
+            }).populate({
+                path: 'dependents.role',
+                populate: {
+                    path: 'user type'
+                }
+            })
+    }
+
+    for (const role of page.items) {
         if (role.employee) {
             let teamSize = await db.employee.find({
                 supervisor: role.employee,
@@ -265,5 +312,5 @@ exports.search = async (query, page, context) => {
         }
     }
 
-    return roleList
+    return page
 }

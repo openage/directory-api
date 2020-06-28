@@ -16,8 +16,9 @@ exports.get = async (req) => {
 }
 
 exports.search = async (req) => {
-    let rolesList = await roleService.search(req.query, paging.extract(req), req.context)
-    return mapper.toSummarySearchModel(rolesList, req.context)
+    let page = await roleService.search(req.query, paging.extract(req), req.context)
+    page.items = mapper.toSummarySearchModel(page.items, req.context)
+    return page
 }
 
 exports.create = async (req) => {

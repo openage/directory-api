@@ -13,6 +13,8 @@ module.exports = {
     dol: Date,
     reason: String,
 
+    meta: Object,
+
     designation: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'designation'
@@ -24,7 +26,7 @@ module.exports = {
     status: {
         type: String,
         default: 'new',
-        enum: ['in-complete', 'new', 'active', 'inactive', 'archived']
+        enum: ['in-complete', 'new', 'invited', 'active', 'inactive', 'archived']
     },
     profile: {
         firstName: String,

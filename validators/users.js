@@ -30,11 +30,11 @@ exports.canResetPassword = async (req) => {
 }
 
 exports.canUpdate = async (req) => {
-    if (!(req.params.id == 'my' || req.params.id == req.context.user.email || req.params.id == req.context.user.code || req.params.id == req.context.user.phone || req.context.hasPermission('system.manage'))) { return 'password required' }
+    if (!(req.params.id === 'my' || req.params.id === req.context.user.email || req.params.id === req.context.user.code || req.params.id === req.context.user.phone || req.context.hasPermission('system.manage'))) { return 'password required' }
 }
 
 exports.canSignOut = async (req) => {
-    if (!(req.params.id == 'my' || req.params.id == req.context.user.email || req.params.id == req.context.user.code || req.params.id == req.context.user.phone || req.context.hasPermission('system.manage'))) { return 'permission required' }
+    if (!(req.params.id === 'my' || req.params.id === req.context.user.email || req.params.id === req.context.user.code || req.params.id === req.context.user.phone || req.context.hasPermission('system.manage'))) { return 'permission required' }
 }
 
 exports.canResendOtp = async (req) => {

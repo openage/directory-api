@@ -18,7 +18,8 @@ exports.toModel = (entity, context) => {
         config: entity.config,
         doj: entity.doj,
         dol: entity.dol,
-        aadhar: entity.aadhar
+        aadhar: entity.aadhar,
+        prospectNo: entity.prospectNo
     }
 
     if (entity.profile) {
@@ -124,7 +125,8 @@ exports.toSummary = (entity, context) => {
         code: entity.code,
         email: entity.email,
         phone: entity.phone,
-        status: entity.status
+        status: entity.status,
+        prospectNo: entity.prospectNo
     }
 
     if (entity.profile) {

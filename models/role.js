@@ -17,6 +17,7 @@ module.exports = {
         lowercase: true
     },
     phone: String,
+    meta: Object,
     type: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'roleType',
@@ -25,7 +26,7 @@ module.exports = {
     status: {
         type: String,
         default: 'new',
-        enum: ['in-complete', 'new', 'active', 'inactive', 'archived', 'blocked']
+        enum: ['in-complete', 'new', 'invited', 'active', 'inactive', 'archived', 'blocked']
     },
     permissions: [{ type: String }], // additional permissions
     dependents: [{

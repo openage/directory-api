@@ -4,7 +4,7 @@ var mongoose = require('mongoose')
 module.exports = {
     code: { type: String, default: 'default' },
     name: { type: String, default: 'Default' },
-
+    year: String,
     organization: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'organization'

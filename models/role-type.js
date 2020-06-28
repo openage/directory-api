@@ -8,7 +8,9 @@ module.exports = {
         index: true
     },
     name: String,
+    description: String,
     permissions: [{ type: String }],
+    status: String,
     tenant: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'tenant',

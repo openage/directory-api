@@ -14,7 +14,7 @@ exports.process = async (session, context) => {
             timeStamp: session.timeStamp
         },
         template: {
-            code: session.templateCode || 'session-initiated'
+            code: `directory|session-${session.status}`
         },
         to: {
             role: session.user.roles[0]

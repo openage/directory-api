@@ -14,7 +14,9 @@ exports.toModel = (entity, context) => {
         id: entity.id,
         code: entity.code,
         name: entity.name,
-        permissions: entity.permissions
+        description: entity.description,
+        permissions: entity.permissions,
+        status: entity.status
     }
 }
 

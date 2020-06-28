@@ -2,10 +2,12 @@
 
 // const serviceProvider = require('config').get('providers')
 const profileMapper = require('./profile')
+const roleTypeMapper = require('./role-type')
 const organizationMapper = require('./organization')
 const designationMapper = require('./designation')
 const departmentMapper = require('./department')
 const divisionMapper = require('./division')
+const tenantMapper = require('./tenant')
 
 // const extractServices = (organization, tenant) => {
 //     if (!organization || !tenant) {
@@ -61,9 +63,11 @@ const toRoleModel = (item, profile, context) => {
         id: item.id,
         key: item.key,
         code: item.code,
+        meta: item.meta || {},
         profile: profileMapper.toModel(profile, context),
         permissions: [],
         dependents: [],
+        type: roleTypeMapper.toModel(item.type, context),
         isCodeUpdated: item.isCodeUpdated,
         timeStamp: item.timeStamp
     }
@@ -135,6 +139,10 @@ const toRoleModel = (item, profile, context) => {
 
     if (item.organization) {
         role.organization = organizationMapper.toModel(item.organization, context)
+    }
+
+    if (item.tenant) {
+        role.tenant = tenantMapper.toModel(item.tenant, context)
     }
 
     if (item.employee) {

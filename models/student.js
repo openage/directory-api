@@ -6,6 +6,7 @@ module.exports = {
         type: String,
         lowercase: true
     },
+    prospectNo: String,
     phone: String,
 
     doj: Date,

@@ -34,29 +34,7 @@ module.exports = {
         logo: String,
         code: String,
         name: String,
-        url: String, // api root url
-        apps: {
-            web: String,
-            android: String,
-            iOS: String
-        },
-        hooks: {
-            organization: {
-                onCreate: String,
-                onUpdate: String,
-                onDelete: String
-            },
-            employee: {
-                onCreate: String,
-                onUpdate: String,
-                onDelete: String
-            },
-            student: {
-                onCreate: String,
-                onUpdate: String,
-                onDelete: String
-            }
-        }
+        url: String // api root url
     }],
     status: {
         type: String,

@@ -69,7 +69,11 @@ const set = async (model, entity, context) => {
     }
 
     if (model.meta) {
-        entity.meta = model.meta
+        entity.meta = entity.meta || {}
+        Object.getOwnPropertyNames(model.meta).forEach(key => {
+            entity.meta[key] = model.meta[key]
+        })
+        entity.markModified('meta')
     }
 
     if (model.isProfileCompleted) {
@@ -90,7 +94,7 @@ const set = async (model, entity, context) => {
         entity.owner = await roleGetter.get(model.owner, context)
     }
 
-    if (model.styles != undefined) {
+    if (model.styles !== undefined) {
         entity.styles = model.styles
     }
 
@@ -117,6 +121,27 @@ const set = async (model, entity, context) => {
         })
     }
 
+    if (model.hooks) {
+        entity.hooks = model.hooks.map(t => {
+            return {
+                trigger: {
+                    entity: t.trigger.entity,
+                    action: t.trigger.action,
+                    when: t.trigger.when || 'after'
+                },
+                actions: t.actions.map(a => {
+                    return {
+                        code: a.code.toLowerCase(),
+                        name: a.name,
+                        handler: a.handler || 'backend',
+                        type: a.type || 'http',
+                        config: a.config || {}
+                    }
+                })
+            }
+        })
+    }
+
     return entity
 }
 
@@ -130,12 +155,14 @@ exports.create = async (data, context) => {
 
     let organization = new db.organization({
         code: data.code.toLowerCase(),
-        status: data.status || 'new',
+        status: data.status || 'active',
         tenant: context.tenant
     })
     await set(data, organization, context)
     await organization.save()
-    await offline.queue('organization', 'create', organization, context)
+    if (!data.skipHook) {
+        await offline.queue('organization', 'create', organization, context)
+    }
     log.end()
     return organization
 
@@ -277,6 +304,25 @@ exports.search = async (query, paging, context) => {
         where.type = query.type
     }
 
+    if (query.name) {
+        where.name = {
+            '$regex': '^' + query.name,
+            $options: 'i'
+        }
+    }
+
+    if (query.status) {
+        if (query.status != 'all') {
+            where.status = query.status
+        } else {
+            where.status = {
+                $in: ['active', 'inactive']
+            }
+        }
+    } else {
+        where.status = { $nin: ['trash', 'inactive'] }
+    }
+
     const count = await db.organization.find(where).count()
     let items
     if (paging) {
@@ -292,13 +338,41 @@ exports.search = async (query, paging, context) => {
 }
 
 exports.remove = async (id, context) => {
-    // to delete all the employees
-    // to delete all its divisions
+    context.logger.start('services:organization:remove')
+    let entity
+    entity = await this.get(id, context)
+    if (!entity) {
+        return
+    }
+    entity.status = 'trash'
+    await entity.save()
+
+    let employees = await db.employee.find({ organization: entity.id, status: { $ne: 'inactive' } })
+    for (const employee of employees) {
+        employee.status = 'inactive'
+        await employee.save()
+        await offline.queue('employee', 'inactive', employee, context)
+    }
+
+    let divisions = await db.division.find({ organization: entity.id, status: { $ne: 'inactive' } })
+    for (const division of divisions) {
+        division.status = 'inactive'
+        await division.save()
+        await offline.queue('division', 'inactive', division, context)
+    }
+
+    let roles = await db.role.find({ organization: entity.id, status: { $ne: 'inactive' } })
+    for (const role of roles) {
+        role.status = 'inactive'
+        await role.save()
+    }
+
+    await offline.queue('organization', 'inactive', entity, context)
+
     // to delete all its departments
     // to delete all its teamMembers
     // to delete all its designation
     // to delete from AMS
-
 }
 
 exports.getByIdOrCode = getByIdOrCode

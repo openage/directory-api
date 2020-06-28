@@ -40,7 +40,8 @@ module.exports = {
         city: String,
         state: String,
         pinCode: String,
-        country: String
+        country: String,
+        location: String
     },
     config: Object,
     navs: [{ type: Object }],
@@ -62,29 +63,7 @@ module.exports = {
         logo: String,
         code: String,
         name: String,
-        url: String,
-        apps: {
-            web: String,
-            android: String,
-            iOS: String
-        },
-        hooks: {
-            organization: {
-                onCreate: String,
-                onUpdate: String,
-                onDelete: String
-            },
-            employee: {
-                onCreate: String,
-                onUpdate: String,
-                onDelete: String
-            },
-            student: {
-                onCreate: String,
-                onUpdate: String,
-                onDelete: String
-            }
-        }
+        url: String
     }],
     owner: {
         type: mongoose.Schema.Types.ObjectId,
@@ -109,7 +88,7 @@ module.exports = {
     status: {
         type: String,
         default: 'active',
-        enum: ['new', 'active', 'inactive']
+        enum: ['new', 'active', 'inactive', 'trash']
     },
     styles: String,
     social: [{

@@ -22,6 +22,10 @@ const set = async (model, entity, context) => {
         entity.name = model.name
     }
 
+    if (model.year) {
+        entity.year = model.year
+    }
+
     if (model.status) {
         entity.status = model.status
     }
@@ -83,7 +87,7 @@ exports.create = async (model, context) => {
 }
 
 exports.update = async (id, model, context) => {
-    let log = context.logger.debug('services/batches:update')
+    let log = context.logger.start('services/batches:update')
     let entity = await db.batch.findById(id)
 
     await set(model, entity, context)
@@ -124,6 +128,10 @@ exports.search = async (query, paging, context) => {
     }
     if (query.status) {
         where['status'] = query.status
+    }
+
+    if (query.year) {
+        where['year'] = query.year
     }
 
     if (query.name) {

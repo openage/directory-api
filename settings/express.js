@@ -1,9 +1,9 @@
 'use strict'
-var express = require('express')
-var path = require('path')
+const express = require('express')
+const path = require('path')
 const cors = require('cors')
 
-var bodyParser = require('body-parser')
+const bodyParser = require('body-parser')
 var appRoot = require('app-root-path')
 
 module.exports.configure = function (app, logger) {

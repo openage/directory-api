@@ -4,9 +4,9 @@ const roleService = require('../../services/role-getter')
 
 exports.process = async (session, context) => {
     if (session.user && (!session.user.roles || !session.user.roles.length)) {
-        session.user.roles = await roleService.search({
+        session.user.roles = (await roleService.search({
             user: session.user
-        }, null, context)
+        }, null, context)).items
     }
 
     await sendIt.dispatch({
@@ -18,7 +18,7 @@ exports.process = async (session, context) => {
             timeStamp: session.timeStamp
         },
         template: {
-            code: 'session-started'
+            code: `directory|session-${session.status}`
         },
         to: {
             role: context.role

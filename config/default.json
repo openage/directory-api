@@ -15,6 +15,7 @@
         "email": "support@openage.in"
     },
     "auth": {
+        "autoCreate": true,
         "provider": "jwt",
         "tokenPeriod": "1440h"
     },
@@ -43,6 +44,11 @@
             "secret": "placeholder",
             "tokenPeriod": "1440h"
         },
+	"google": {
+            "clientIds": [
+                "placeholder"
+            ]
+        },
         "send-it": {
             "url": "https://dev.openage.in/sendIt/api",
             "code": "send-it",
@@ -58,6 +64,9 @@
             "url": "https://dev.openage.in/ams/api",
             "code": "ams",
             "name": "Ams"
+        },
+        "gateway": {
+            "url": "https://dev.openage.in/gateway/api"
         },
         "bap": {
             "url": "https://dev.openage.in/bap/api",

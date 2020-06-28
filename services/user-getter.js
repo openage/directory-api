@@ -138,16 +138,20 @@ exports.getByGoogleId = async (googleId, context) => {
 exports.getByEmployeeCode = async (code, context) => {
     let log = context.logger.start('services/users:getByEmployeeCode')
 
-    let employee = await db.employee.findOne({
+    let where = {
         code: code,
-        organization: context.organization,
         tenant: context.tenant
-    }).populate('user')
+    }
+
+    if (context.organization) {
+        where.organization = context.organization
+    }
+
+    let employee = await db.employee.findOne(where).populate('user')
 
     // if (!employee) {
     //     throw new Error('employee not found')
     // }
-
     log.end()
     if (!employee) {
         return
@@ -158,14 +162,19 @@ exports.getByEmployeeCode = async (code, context) => {
 exports.getByStudentCode = async (code, context) => {
     let log = context.logger.start('services/users:getByStudentCode')
 
-    let student = await db.student.findOne({
+    let where = {
         isTemporary: {
             $ne: true
         },
         code: code,
-        organization: context.organization,
         tenant: context.tenant
-    }).populate('user')
+    }
+
+    if (context.organization) {
+        where.organization = context.organization
+    }
+
+    let student = await db.student.findOne(where).populate('user')
 
     log.end()
     if (!student) {
@@ -257,7 +266,8 @@ exports.search = async (query, paging, context) => {
         user.roles = roles.map(role => {
             return {
                 id: role.id,
-                code: role.code
+                code: role.code,
+                permissions: role.permissions
             }
         })
         userList.push(user)

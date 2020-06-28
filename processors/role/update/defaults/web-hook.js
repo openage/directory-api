@@ -1,8 +1,10 @@
 'use strict'
 const webHook = require('../../../../helpers/web-hook')
 
-exports.process = async (role, context) => {
-    for (const service of context.tenant.services) {
-        await webHook.send('role', 'onUpdate', role, service, context)
-    }
+exports.process = async (entity, context) => {
+    await webHook.send({
+        entity: 'role',
+        action: 'update',
+        when: 'after'
+    }, entity, context)
 }

@@ -86,6 +86,14 @@ const set = async (model, entity, context) => {
         entity.markModified('config')
     }
 
+    if (model.meta) {
+        entity.meta = entity.meta || {}
+        Object.getOwnPropertyNames(model.meta).forEach(key => {
+            entity.meta[key] = model.meta[key]
+        })
+        entity.markModified('meta')
+    }
+
     if (model.type) {
         entity.type = model.type
     }
@@ -186,6 +194,8 @@ exports.create = async (data, context) => {
         }, context)
     }
 
+    let employeeStatus = data.status || 'new'
+
     if (!user) {
         user = await userService.create({
             phone: data.phone,
@@ -204,7 +214,7 @@ exports.create = async (data, context) => {
             user: user,
             type: data.type || 'normal',
             doj: data.doj || new Date(),
-            status: data.status || 'new',
+            status: employeeStatus,
             organization: context.organization,
             tenant: context.tenant
         })
@@ -213,23 +223,36 @@ exports.create = async (data, context) => {
     await set(data, entity, context)
     await entity.save()
 
-    let roleType = await roleTypeService.get(`${context.organization.type || 'organization'}.${entity.type || 'employee'}`, context)
+    if (!data.skipRole) {
+        let roleType = await roleTypeService.get(`${context.organization.type || 'organization'}.${entity.type || 'employee'}`, context)
 
-    let role = new db.role({
-        key: guid.create().value,
-        code: entity.code,
-        phone: data.phone,
-        email: data.email,
-        user: user,
-        type: roleType,
-        employee: entity,
-        organization: context.organization,
-        tenant: context.tenant
-    })
-    await role.save()
+        let roleStatus = entity.status
 
-    await offline.queue('employee', 'create', entity, context)
-    entity.role = role
+        switch (employeeStatus) {
+            case 'in-complete':
+                roleStatus = 'active'
+                break
+        }
+
+        let role = new db.role({
+            key: guid.create().value,
+            code: entity.code,
+            phone: data.phone,
+            email: data.email,
+            user: user,
+            status: roleStatus,
+            type: roleType,
+            employee: entity,
+            organization: context.organization,
+            tenant: context.tenant
+        })
+        await role.save()
+        entity.role = role
+    }
+
+    if (!data.skipHook) {
+        await offline.queue('employee', 'create', entity, context)
+    }
 
     log.end()
     return entity
@@ -239,11 +262,17 @@ exports.update = async (id, model, context) => {
     let log = context.logger.start('services/employees:update')
 
     let entity = await this.get(id, context)
+
+    let status = entity.status
     await set(model, entity, context)
 
     await entity.save()
 
     await offline.queue('employee', 'update', entity, context)
+
+    if (entity.status !== status) {
+        await offline.queue('employee', entity.status, entity, context)
+    }
 
     log.end()
     return entity

@@ -39,6 +39,11 @@ exports.create = async (req) => {
     return mapper.toSessionModel(user, req.context)
 }
 
+exports.register = async (req) => { // user register by other services
+    let user = await users.create(req.body, req.context)
+    return mapper.toModel(user, req.context)
+}
+
 exports.signUp = async (req) => {
     let user = await users.create(req.body, req.context)
     return mapper.toSessionModel(user, req.context)
@@ -90,15 +95,15 @@ exports.update = async (req) => {
 
 exports.signOut = async (req) => {
     let user = await users.signOut(req.params.id, req.context)
-    return 'Signed Out Succesfully'
+    return 'Signed Out Successfully'
 }
 
 exports.get = async (req) => {
     let user = await userGetter.get(req.params.id, req.context)
 
-    user.roles = await roles.search({
+    user.roles = (await roles.search({
         user: user
-    }, null, req.context)
+    }, null, req.context)).items
 
     return mapper.toModel(user, req.context)
 }
@@ -141,7 +146,7 @@ exports.exists = async (req) => {
 exports.search = async (req) => {
     return {
         items: (await userGetter.search(req.query, paging.extract(req), req.context)).items.map(i => {
-            return mapper.toSearchModel(i, req.context)
+            return mapper.toModel(i, req.context)
         })
     }
 }

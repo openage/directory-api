@@ -1,8 +1,8 @@
 'use strict'
 var mongoose = require('mongoose')
 module.exports = {
-    code: {type: String, default: 'default'},
-    name: {type: String, default: 'Default'},
+    code: { type: String, default: 'default' },
+    name: { type: String, default: 'Default' },
 
     incharge: {
         type: mongoose.Schema.Types.ObjectId,

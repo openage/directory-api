@@ -11,7 +11,7 @@ exports.toModel = (entity, context) => {
         id: entity.id,
         name: entity.name,
         code: entity.code,
-        status: entity.status
-
+        status: entity.status,
+        year: entity.year
     }
 }

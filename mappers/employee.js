@@ -27,7 +27,7 @@ exports.toModel = (entity, context) => {
         email: entity.email,
         phone: entity.phone,
         config: entity.config,
-        supervisor: this.toSummary(entity.supervisor, context),
+        supervisor: toSummaryModel(entity.supervisor, context),
         designation: designationMapper.toSummary(entity.designation, context),
         department: departmentMapper.toSummary(entity.department, context),
         division: divisionMapper.toSummary(entity.division, context),
@@ -79,7 +79,7 @@ exports.toModel = (entity, context) => {
     return model
 }
 
-exports.toSummary = (entity, context) => {
+const toSummaryModel = (entity, context) => {
     if (!entity) {
         return null
     }
@@ -99,12 +99,31 @@ exports.toSummary = (entity, context) => {
         code: entity.code,
         email: entity.email,
         phone: entity.phone,
+        type: entity.type,
         supervisor: this.toSummary(entity.supervisor, context),
         designation: designationMapper.toSummary(entity.designation, context),
         department: departmentMapper.toSummary(entity.department, context),
         division: divisionMapper.toSummary(entity.division, context),
         status: entity.status
     }
+}
+
+exports.toSummary = (entity, context) => {
+    if (!entity) {
+        return null
+    }
+    if (entity._bsontype === 'ObjectID') {
+        return {
+            id: entity.toString()
+        }
+    }
+
+    const model = toSummaryModel(entity, context)
+
+    model.address = entity.address.toObject()
+    model.meta = entity.meta
+
+    return model
 }
 
 exports.toServiceModel = (entity, context) => {

@@ -23,7 +23,8 @@ exports.configure = function (logger) {
         role: fromService('roles'),
         employee: fromService('employees'),
         student: fromService('students'),
-        organization: fromService('organizations')
+        organization: fromService('organizations'),
+        division: fromService('divisions')
     }
     require('@open-age/offline-processor').initialize(config, log)
 }

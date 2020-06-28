@@ -1,10 +1,10 @@
 module.exports = [{
     url: '/',
     get: {
-        permissions: ['organization.user']
+        permissions: ['organization.user', 'organization.admin', 'tenant.admin']
     },
     post: {
-        permissions: ['organization.admin']
+        permissions: ['organization.admin', 'tenant.admin']
     }
 }, {
     url: '/bulk',
@@ -16,12 +16,12 @@ module.exports = [{
 }, {
     url: '/:id',
     put: {
-        permissions: ['organization.admin']
+        permissions: ['organization.admin', 'tenant.admin']
     },
     delete: {
-        permissions: ['organization.admin']
+        permissions: ['organization.admin', 'tenant.admin']
     },
     get: {
-        permissions: ['organization.user']
+        permissions: ['organization.user', 'organization.admin', 'tenant.admin']
     }
 }]

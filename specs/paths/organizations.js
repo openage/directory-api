@@ -12,7 +12,7 @@ module.exports = [{
         method: 'get',
         id: 'get-by-code',
         summary: 'summary by code',
-        permissions: ['tenant.guest', 'tenant.user']
+        permissions: ['tenant.guest', 'organization.admin', 'tenant.user']
     }
 }, {
     url: '/isAvailable',
@@ -20,17 +20,17 @@ module.exports = [{
         method: 'codeAvailable',
         id: 'exists',
         summary: 'exists',
-        permissions: ['tenant.user', 'tenant.guest']
+        permissions: ['tenant.user', 'organization.admin', 'tenant.guest']
     }
 }, {
     url: '/:id',
     put: {
-        permissions: ['organization.admin', 'tenant.admin']
+        permissions: ['organization.admin', 'organization.admin', 'tenant.admin']
     },
     delete: {
-        permissions: ['organization.admin', 'tenant.admin']
+        permissions: ['organization.admin', 'organization.admin', 'tenant.admin']
     },
     get: {
-        permissions: ['organization.user', 'tenant.admin']
+        permissions: ['organization.user', 'organization.admin', 'tenant.admin']
     }
 }]

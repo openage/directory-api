@@ -1,6 +1,8 @@
 'use strict'
 
 const db = require('../models')
+const organizationService = require('./organizations')
+const offline = require('@open-age/offline-processor')
 
 const populate = 'courses'
 
@@ -20,6 +22,21 @@ const set = async (model, entity, context) => {
 
     if (model.name) {
         entity.name = model.name
+    }
+
+    if (model.meta) {
+        entity.meta = entity.meta || {}
+        Object.getOwnPropertyNames(model.meta).forEach(key => {
+            entity.meta[key] = model.meta[key]
+        })
+        entity.markModified('meta')
+    }
+
+    if (model.courses) {
+        entity.courses = []
+        model.courses.forEach(course => {
+            entity.courses.push(course.id)
+        })
     }
 
     if (model.address) {
@@ -59,6 +76,10 @@ exports.create = async (model, context) => {
         throw new Error('name is needed')
     }
 
+    if (model.organization) {
+        context.organization = await organizationService.get(model.organization, context)
+    }
+
     if (!model.code) {
         model.code = await getNewDivisionCode({
             name: model.name
@@ -82,6 +103,7 @@ exports.create = async (model, context) => {
 
     await set(model, entity, context)
     await entity.save()
+    await offline.queue('division', 'create', entity, context)
 
     log.end()
 
@@ -90,10 +112,16 @@ exports.create = async (model, context) => {
 
 exports.update = async (id, model, context) => {
     let log = context.logger.start('services/divisions:update')
-    let entity = await db.division.findById(id)
+    let entity = await db.division.findById(id).populate({
+        path: 'organization',
+        populate: {
+            path: 'owner'
+        }
+    })
 
     await set(model, entity, context)
     await entity.save()
+    await offline.queue('division', 'update', entity, context)
 
     log.end()
     return entity
@@ -101,7 +129,6 @@ exports.update = async (id, model, context) => {
 
 exports.remove = async (id, context) => {
     let log = context.logger.start('services/divisions:update')
-
     return this.update(id, {
         status: 'inactive'
     }, context)
@@ -124,8 +151,15 @@ exports.search = async (query, paging, context) => {
     query = query || {}
 
     let where = {
-        organization: context.organization.id,
         status: query.status || 'active'
+    }
+
+    if (query.organization) {
+        where.organization = await organizationService.get(query.organization, context)
+    } else {
+        if (context.organization) {
+            where.organization = context.organization.id
+        }
     }
 
     if (query.name) {
@@ -175,19 +209,19 @@ exports.get = async (query, context) => {
     let division
     if (typeof query === 'string') {
         if (query.isObjectId()) {
-            division = await db.division.findById(query).populate('courses')
+            division = await db.division.findById(query).populate('organization courses')
         } else {
             division = await db.division.findOne({
                 code: query.toLowerCase(),
                 organization: context.organization
-            }).populate('courses')
+            }).populate('organization courses')
         }
         if (division) {
             return division
         }
     }
     if (query.id) {
-        division = await db.division.findById(query.id).populate('courses')
+        division = await db.division.findById(query.id).populate('organization courses')
         if (division) {
             return division
         }
@@ -200,7 +234,7 @@ exports.get = async (query, context) => {
                 $options: 'i'
             },
             organization: context.organization.id
-        }).populate('courses')
+        }).populate('organization courses')
         if (division) {
             return division
         }
@@ -213,7 +247,7 @@ exports.get = async (query, context) => {
                 $options: 'i'
             },
             organization: context.organization.id
-        }).populate('courses')
+        }).populate('organization courses')
 
         if (!division) {
             division = await this.create({

@@ -1,6 +1,7 @@
 'use strict'
 const profileMapper = require('./profile')
 const employeeMapper = require('./employee')
+const roleTypeMapper = require('./role-type')
 const studentMapper = require('./student')
 const organizationMapper = require('./organization')
 
@@ -17,6 +18,7 @@ exports.toModel = (entity, context) => {
         id: entity.id,
         level: entity.level,
         code: entity.code,
+        meta: entity.meta || {},
         permissions: entity.permissions || [],
         dependents: [],
         isCodeUpdated: entity.isCodeUpdated
@@ -30,6 +32,7 @@ exports.toModel = (entity, context) => {
                 model.permissions.push(permission)
             })
         }
+        model.type = roleTypeMapper.toModel(entity.type, context)
     }
 
     if (entity.user) {
@@ -142,6 +145,10 @@ exports.toSummaryModel = (entity, context) => {
         }
     } else {
         model.user = {}
+    }
+
+    if (entity.type) {
+        model.type = roleTypeMapper.toModel(entity.type, context)
     }
 
     if (entity.employee) {

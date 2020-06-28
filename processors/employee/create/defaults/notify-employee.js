@@ -2,16 +2,17 @@
 
 const sendIt = require('@open-age/send-it-client')
 
+const employeeMapper = require('../../../../mappers/employee')
+
 exports.process = async (employee, context) => {
+    let model = employeeMapper.toModel(employee, context)
+
     await sendIt.dispatch({
         data: {
-            id: employee.id,
-            name: `${employee.profile.firstName}`,
-            status: employee.status,
-            organization: employee.organization || context.organization
+            employee: model
         },
         template: {
-            code: 'employee-joining'
+            code: `directory|employee-create-${employee.status}`
         },
         options: {
             to: { email: employee.email }

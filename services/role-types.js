@@ -5,22 +5,41 @@ const db = require('../models')
 const populate = ''
 
 const set = async (model, entity, context) => {
+    if (model.code) {
+        entity.code = model.code.toLowerCase()
+    }
+
     if (model.name) {
         entity.name = model.name
     }
 
-    if (model.permissions) {
-        entity.permissions = model.permissions
+    if (model.description) {
+        entity.description = model.description
     }
+
+    if (model.permissions) {
+        entity.permissions = (model.permissions || []).map(p => p.toLowerCase())
+    }
+
+    if (model.status) {
+        entity.status = model.status
+    }
+
     return entity
 }
 
 exports.create = async (model, context) => {
-    let entity = new db.roleType({
-        code: model.code.toLowerCase(),
-        permissions: model.permissions || [model.code.toLowerCase()],
-        tenant: context.tenant
-    })
+    let entity = await this.get(model, context)
+    if (!entity) {
+        entity = new db.roleType({
+            status: "active",
+            tenant: context.tenant
+        })
+    }
+
+    if (!model.permissions && !entity.permissions) {
+        model.permissions = [model.code.toLowerCase()]
+    }
 
     await set(model, entity, context)
     await entity.save()
@@ -48,11 +67,7 @@ exports.get = async (query, context) => {
         return db.roleType.findById(query.id)
     } else if (query.code) {
         where['code'] = query.code.toLowerCase()
-        entity = await db.roleType.findOne(where)
-        if (entity) { return entity }
-        return exports.create({
-            code: query.code
-        }, context)
+        return db.roleType.findOne(where)
     }
     return null
 }
@@ -83,15 +98,31 @@ exports.search = async (query, paging, context) => {
 
     query = query || {}
     let where = {
+        status: 'active',
         tenant: context.tenant
     }
 
-    if (context.organization) {
-        where.code = {
-            $regex: '^' + context.organization.type,
+    if (query.name) {
+        where.name = {
+            '$regex': '^' + query.name,
             $options: 'i'
         }
     }
+
+    if (query.status) {
+        where['status'] = query.status
+    }
+
+    if (query.code) {
+        where['code'] = query.code
+    }
+
+    // if (query.organization) {
+    //     where.code = {
+    //         $regex: '^' + context.organization.type,
+    //         $options: 'i'
+    //     }
+    // }
 
     const count = await db.roleType.find(where).count()
     let items
@@ -106,4 +137,11 @@ exports.search = async (query, paging, context) => {
         count: count,
         items: items
     }
+}
+
+exports.remove = async (id, context) => {
+    let log = context.logger.start('services/batches:remove')
+    return this.update(id, {
+        status: 'inactive'
+    }, context)
 }

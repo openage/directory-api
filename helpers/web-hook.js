@@ -63,7 +63,29 @@ const buildHeader = (config, injectorData, context) => {
 }
 
 const buildPayload = (config, data, injectorData, context) => {
-    let payload = config.data ? JSON.parse(JSON.stringify(config.data).inject(injectorData)) : data
+    let payload = data
+
+    if (config.data) {
+        payload = JSON.parse(JSON.stringify(config.data).inject(injectorData))
+
+        const removeEmpty = (obj) => {
+            for (const key of Object.keys(obj)) {
+                const value = obj[key]
+                if (typeof value === 'object') {
+                    obj[key] = removeEmpty(value)
+                }
+
+                if (value === 'undefined') {
+                    obj[key] = undefined
+                } else if (value === 'null') {
+                    obj[key] = null
+                }
+            }
+            return obj
+        }
+
+        payload = removeEmpty(payload)
+    }
 
     if (!config.mapper) {
         return payload
@@ -108,6 +130,7 @@ const getActions = (trigger, context) => {
 
         if (hook && hook.actions && hook.actions.length) {
             hook.actions.forEach(a => {
+                a.type = a.type || 'http'
                 if (a.type.toLowerCase() === 'http' &&
                     a.handler === 'backend' &&
                     !actions.find(o => o.code.toLowerCase() === a.code.toLowerCase())

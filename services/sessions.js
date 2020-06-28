@@ -19,13 +19,14 @@ exports.get = async (query, context) => {
     }
 
     if (entity && entity.user) {
-        entity.user.roles = await roleService.search({ user: entity.user }, null, context)
+        entity.user.roles = (await roleService.search({
+            user: entity.user
+        }, null, context)).items
     }
     return entity
 }
 
 exports.searchByUser = async (user, context) => {
-
     let query = {
         user: user,
         status: 'active'
@@ -50,9 +51,9 @@ exports.initiate = async (model, context) => {
 
     session.templateCode = model.templateCode || 'session-initiated'
 
-    session.user.roles = await roleService.search({
+    session.user.roles = (await roleService.search({
         user: session.user
-    }, null, context)
+    }, null, context)).items
 
     await offline.queue('session', 'initiate', session, context)
     log.end()
@@ -73,7 +74,7 @@ exports.update = async (id, model, context) => {
 
     await session.save()
 
-    if (session.status != 'expired') {
+    if (session.status !== 'expired') {
         await offline.queue('session', 'start', session, context)
     }
 
@@ -91,9 +92,9 @@ exports.create = async (model, context) => {
     }).save()
     await entity.save()
 
-    entity.user.roles = await roleService.search({
+    entity.user.roles = (await roleService.search({
         user: entity.user
-    }, null, context)
+    }, null, context)).items
 
     await offline.queue('session', 'start', entity, context)
     return entity
@@ -115,9 +116,9 @@ exports.activate = async (id, otp, context) => {
 
     await entity.save()
 
-    entity.user.roles = await roleService.search({
+    entity.user.roles = (await roleService.search({
         user: entity.user
-    }, null, context)
+    }, null, context)).items
 
     await offline.queue('session', 'start', entity, context)
     return entity
